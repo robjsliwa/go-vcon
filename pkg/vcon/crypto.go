@@ -72,6 +72,7 @@ func (v *VCon) Sign(signer crypto.Signer, certs []*x509.Certificate) (*SignedVCo
 
 // Verify checks signature and returns the inner VCon.
 func (sv *SignedVCon) Verify(rootPool *x509.CertPool) (*VCon, error) {
+	// Make sure to specify RS256 as the allowed signature algorithm
 	jws, err := jose.ParseSigned(sv.JWS, []jose.SignatureAlgorithm{jose.RS256})
 	if err != nil {
 		return nil, err
@@ -83,39 +84,40 @@ func (sv *SignedVCon) Verify(rootPool *x509.CertPool) (*VCon, error) {
 	}
 
 	sig := jws.Signatures[0]
-	x5cHeader, ok := sig.Protected.ExtraHeaders[jose.HeaderKey("x5c")]
+	
+	// Get the x5c header - it should be in the protected headers
+	x5cHeaderRaw, ok := sig.Protected.ExtraHeaders[jose.HeaderKey("x5c")]
 	if !ok {
 		return nil, errors.New("no x5c header in JWS")
 	}
 
-	// Parse the certificate chain
+	// Parse the certificate chain from the x5c header
 	var certChain []*x509.Certificate
-	x5cData, ok := x5cHeader.([]interface{})
+	
+	// Try to extract the x5c header as an array of strings
+	x5cStrings, ok := x5cHeaderRaw.([]interface{})
 	if !ok {
-		return nil, errors.New("invalid x5c header format")
+		return nil, errors.New("x5c header is not in expected format")
 	}
 
-	for _, certData := range x5cData {
-		// Handle different possible formats of certificate data
-		var certBytes []byte
-
-		switch cd := certData.(type) {
-		case []byte:
-			certBytes = cd
-		case string:
-			var err error
-			certBytes, err = base64.StdEncoding.DecodeString(cd)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode certificate: %w", err)
-			}
-		default:
-			return nil, errors.New("invalid certificate format in x5c")
+	for _, item := range x5cStrings {
+		certStr, ok := item.(string)
+		if !ok {
+			return nil, errors.New("certificate in x5c is not a string")
 		}
 
+		// Decode the base64 certificate
+		certBytes, err := base64.StdEncoding.DecodeString(certStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode certificate: %w", err)
+		}
+
+		// Parse the certificate
 		cert, err := x509.ParseCertificate(certBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse certificate: %w", err)
 		}
+		
 		certChain = append(certChain, cert)
 	}
 

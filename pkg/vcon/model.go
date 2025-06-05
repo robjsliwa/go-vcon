@@ -77,6 +77,7 @@ type FileRef struct {
 // SignOptions contains options for vCon signing
 type SignOptions struct {
     Certificates []*x509.Certificate
+    ExtraHeaders map[string]interface{}
 }
 
 // Convenience API
