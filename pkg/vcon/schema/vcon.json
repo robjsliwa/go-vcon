@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/vcon.schema.json",
+  "title": "vCon JSON Container (draft-ietf-vcon-vcon-container-03)",
+  "type": "object",
+  "required": [
+    "vcon",
+    "uuid",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "vcon": {
+      "type": "string",
+      "const": "0.0.3",
+      "description": "Version identifier for this vCon draft"
+    },
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "group": {
+      "type": "string"
+    },
+    "redacted": {
+      "type": "boolean"
+    },
+    "appended": {
+      "type": "boolean"
+    },
+    "parties": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/party"
+      }
+    },
+    "dialog": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dialog"
+      }
+    },
+    "analysis": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/analysis"
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attachment"
+      }
+    }
+  },
+  "$defs": {
+    "fileref": {
+      "type": "object",
+      "description": "Inline or external reference to binary/text content",
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string",
+          "enum": [
+            "base64"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "content_hash": {
+          "type": "string"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "body",
+            "encoding"
+          ]
+        },
+        {
+          "required": [
+            "url",
+            "content_hash"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "party": {
+      "type": "object",
+      "properties": {
+        "addr": {
+          "type": "string"
+        },
+        "e164": {
+          "type": "string",
+          "pattern": "^\\+?[0-9]+$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "loc": {
+          "type": "string"
+        },
+        "role": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "passport": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dialog": {
+      "type": "object",
+      "properties": {
+        "start_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "orig_party": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dest_parties": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "content": {
+          "$ref": "#/$defs/fileref"
+        },
+        "interaction_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "vendor": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string"
+        },
+        "content": {
+          "$ref": "#/$defs/fileref"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "attachment": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/fileref"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dialog": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "party": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
