@@ -73,11 +73,8 @@ func TestSignAndVerify(t *testing.T) {
 	v.Subject = "Test vCon"
 	v.AddParty(vcon.Party{Name: "Test Person"})
 	
-	// Sign the vCon - make sure certificates are properly passed
-	opts := &vcon.SignOptions{
-		Certificates: certs,
-	}
-	signed, err := v.Sign(privateKey, opts.Certificates)
+	// Sign the vCon - directly pass certificates to the Sign method
+	signed, err := v.Sign(privateKey, certs)
 	require.NoError(t, err)
 	assert.NotNil(t, signed)
 	
@@ -101,11 +98,8 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	v.Subject = "Test vCon"
 	v.AddParty(vcon.Party{Name: "Test Person"})
 	
-	// Sign the vCon first with proper certificate options
-	opts := &vcon.SignOptions{
-		Certificates: certs,
-	}
-	signed, err := v.Sign(privateKey, opts.Certificates)
+	// Sign the vCon first - directly pass certificates
+	signed, err := v.Sign(privateKey, certs)
 	require.NoError(t, err)
 	
 	// Create recipient for encryption
