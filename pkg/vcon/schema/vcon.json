@@ -75,7 +75,9 @@
         "encoding": {
           "type": "string",
           "enum": [
-            "base64"
+            "base64",
+            "json",
+            "none"
           ]
         },
         "url": {
@@ -105,63 +107,260 @@
     "party": {
       "type": "object",
       "properties": {
-        "addr": {
+        "tel": {
           "type": "string"
         },
-        "e164": {
-          "type": "string",
-          "pattern": "^\\+?[0-9]+$"
+        "stir": {
+          "type": "string"
+        },
+        "mailto": {
+          "type": "string"
         },
         "name": {
           "type": "string"
         },
-        "loc": {
+        "validation": {
           "type": "string"
+        },
+        "gmlpos": {
+          "type": "string"
+        },
+        "civicaddress": {
+          "$ref": "#/$defs/civicaddress"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string",
+          "format": "uuid" 
         },
         "role": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "type": "string"
         },
-        "passport": {
+        "contact_list": {
           "type": "string"
         }
+      },
+      "additionalProperties": false
+    },
+    "civicaddress": {
+      "type": "object",
+      "properties": {
+        "country": { "type": "string" },
+        "a1": { "type": "string" },
+        "a2": { "type": "string" },
+        "a3": { "type": "string" },
+        "a4": { "type": "string" },
+        "a5": { "type": "string" },
+        "a6": { "type": "string" },
+        "prd": { "type": "string" },
+        "pod": { "type": "string" },
+        "sts": { "type": "string" },
+        "hno": { "type": "string" },
+        "hns": { "type": "string" },
+        "lmk": { "type": "string" },
+        "loc": { "type": "string" },
+        "flr": { "type": "string" },
+        "nam": { "type": "string" },
+        "pc": { "type": "string" }
       },
       "additionalProperties": false
     },
     "dialog": {
       "type": "object",
       "properties": {
-        "start_time": {
+        "type": {
+          "type": "string",
+          "enum": ["recording", "text", "transfer", "incomplete"]
+        },
+        "start": {
           "type": "string",
           "format": "date-time"
         },
-        "end_time": {
-          "type": "string",
-          "format": "date-time"
+        "duration": {
+          "type": "number",
+          "minimum": 0
         },
-        "media_type": {
-          "type": "string"
+        "parties": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { 
+              "type": "array", 
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  { "type": "integer", "minimum": 0 },
+                  { 
+                    "type": "array", 
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         },
-        "orig_party": {
+        "originator": {
           "type": "integer",
           "minimum": 0
         },
-        "dest_parties": {
+        "mediatype": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "content_hash": {
+          "type": "string"
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "no-answer", 
+            "congestion", 
+            "failed", 
+            "busy", 
+            "hung-up", 
+            "voicemail-no-message"
+          ]
+        },
+        "party_history": {
           "type": "array",
           "items": {
-            "type": "integer",
-            "minimum": 0
+            "$ref": "#/$defs/party_history"
           }
         },
-        "content": {
-          "$ref": "#/$defs/fileref"
+        "transferee": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "transferor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "transfer-target": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "original": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consultation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "target-dialog": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "campaign": {
+          "type": "string"
+        },
+        "interaction_type": {
+          "type": "string"
         },
         "interaction_id": {
           "type": "string"
+        },
+        "skill": {
+          "type": "string"
+        },
+        "application": {
+          "type": "string"
+        },
+        "message_id": {
+          "type": "string"
         }
       },
+      "required": [
+        "type",
+        "start"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {"enum": ["recording", "text"]}
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": ["body", "encoding", "parties"]
+              },
+              {
+                "required": ["url", "content_hash", "parties"]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {"const": "incomplete"}
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["disposition"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {"const": "transfer"}
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["transferee", "transferor", "transfer-target", "original", "target-dialog"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "party_history": {
+      "type": "object",
+      "properties": {
+        "party": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event": {
+          "type": "string",
+          "enum": ["join", "drop", "hold", "unhold", "mute", "unmute"]
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "party",
+        "event",
+        "time"
+      ],
       "additionalProperties": false
     },
     "analysis": {
@@ -170,14 +369,39 @@
         "type": {
           "type": "string"
         },
+        "dialog": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "array", "items": {"type": "integer", "minimum": 0} }
+          ]
+        },
+        "mediatype": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
         "vendor": {
           "type": "string"
         },
         "product": {
           "type": "string"
         },
-        "content": {
-          "$ref": "#/$defs/fileref"
+        "schema": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "content_hash": {
+          "type": "string"
         }
       },
       "required": [
@@ -201,8 +425,22 @@
             "party": {
               "type": "integer",
               "minimum": 0
+            },
+            "start": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "mediatype": {
+              "type": "string"
+            },
+            "filename": {
+              "type": "string"
             }
           },
+          "required": [
+            "start", 
+            "party"
+          ],
           "additionalProperties": false
         }
       ]

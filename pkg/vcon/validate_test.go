@@ -8,8 +8,6 @@ import (
 )
 
 func TestValidate(t *testing.T) {
-	t.Skip("Skipping validation test until JSON schema issues are fixed")
-	
 	tests := []struct {
 		name        string
 		modifyVCon  func(*vcon.VCon)
@@ -23,7 +21,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "missing version",
 			modifyVCon: func(v *vcon.VCon) {
-				v.Version = ""
+				v.Vcon = ""
 			},
 			expectError: true,
 		},
@@ -41,7 +39,7 @@ func TestValidate(t *testing.T) {
 			modifyVCon: func(v *vcon.VCon) {
 				v.Dialog = append(v.Dialog, vcon.Dialog{
 					Originator:  0,
-					DestParties: []int{999}, // Out of range
+					Parties: []int{999},
 				})
 			},
 			expectError: true,

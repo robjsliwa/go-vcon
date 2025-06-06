@@ -57,12 +57,12 @@ func main() {
 	// Add parties
 	v.AddParty(vcon.Party{
 		Name: "John Doe",
-		E164: "+12025551234",
+		Tel: "tel:+12025551234",
 	})
 	
 	v.AddParty(vcon.Party{
 		Name: "Jane Smith",
-		E164: "+12025555678",
+		Tel: "tel:+12025555678",
 	})
 	
 	// Validate

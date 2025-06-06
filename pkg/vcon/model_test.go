@@ -13,7 +13,7 @@ import (
 
 func TestNew(t *testing.T) {
 	v := vcon.New()
-	assert.Equal(t, vcon.SpecVersion, v.Version)
+	assert.Equal(t, vcon.SpecVersion, v.Vcon) // Updated from v.Version to v.Vcon
 	assert.NotEqual(t, uuid.UUID{}, v.UUID)
 	assert.False(t, v.CreatedAt.IsZero())
 }
@@ -27,10 +27,18 @@ func TestRoundTrip(t *testing.T) {
 	assert.Equal(t, 0, idx)
 	
 	now := time.Now().UTC()
-	v.AddDialog(vcon.Dialog{StartTime: &now, Originator: 0})
+	v.AddDialog(vcon.Dialog{
+        StartTime: &now,
+        Originator: 0,
+        Type: "text",
+        MediaType: "audio/wav",
+        ContentHash: "test-hash",
+        Body: "Hello Alice!",
+        Parties: 1,
+        Encoding: "base64",
+    })
 
-	// Temporarily skip validation for this test
-	// Just test the JSON marshaling and unmarshaling
+	// Test the JSON marshaling and unmarshaling
 	data, err := json.Marshal(v)
 	require.NoError(t, err)
 	
@@ -38,14 +46,14 @@ func TestRoundTrip(t *testing.T) {
 	err = json.Unmarshal(data, &out)
 	require.NoError(t, err)
 	
-	// Comment out validation for now
-	// err = out.Validate()
-	// require.NoError(t, err, "validate: %v", err)
+	// Re-enable validation now that we've fixed the issues
+	err = out.Validate()
+	require.NoError(t, err, "validate: %v", err)
 
 	// Verify the data was preserved
 	assert.Equal(t, v.Subject, out.Subject)
 	assert.Equal(t, v.UUID, out.UUID)
-	assert.Equal(t, v.Version, out.Version)
+	assert.Equal(t, v.Vcon, out.Vcon)
 	assert.Equal(t, len(v.Parties), len(out.Parties))
 	assert.Equal(t, len(v.Dialog), len(out.Dialog))
 }
@@ -69,12 +77,9 @@ func TestAddDialog(t *testing.T) {
 	now := time.Now().UTC()
 	idx := v.AddDialog(vcon.Dialog{
 		StartTime: &now, 
-		EndTime: &now, 
+		Duration: (5 * time.Second).Seconds(),
 		MediaType: "audio/wav",
-		Content: &vcon.FileRef{
-			Body: "test-content",
-			Encoding: "none",
-		},
+		ContentHash: "test-hash",
 	})
 	
 	assert.Equal(t, 0, idx)
@@ -89,10 +94,7 @@ func TestAddAnalysis(t *testing.T) {
 		Type: "transcript",
 		Vendor: "test-vendor",
 		Product: "test-product",
-		Content: &vcon.FileRef{
-			Body: "test-content",
-			Encoding: "none",
-		},
+		ContentHash: "test-content",
 	})
 	
 	assert.Equal(t, 0, idx)
