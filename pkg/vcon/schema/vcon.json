@@ -31,10 +31,10 @@
       "type": "string"
     },
     "group": {
-      "type": "string"
+      "type": ["string", "object", "array"]
     },
     "redacted": {
-      "type": "boolean"
+      "type": ["boolean", "object", "array"]
     },
     "appended": {
       "type": "boolean"
@@ -62,6 +62,9 @@
       "items": {
         "$ref": "#/$defs/attachment"
       }
+    },
+    "meta": {
+      "type": ["object", "array", "string"]
     }
   },
   "$defs": {
@@ -76,6 +79,7 @@
           "type": "string",
           "enum": [
             "base64",
+            "base64url",
             "json",
             "none"
           ]
@@ -86,6 +90,14 @@
         },
         "content_hash": {
           "type": "string"
+        },
+        "alg": {
+          "type": "string",
+          "description": "Hash algorithm (e.g., sha256)"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Hash signature (base64url encoded)"
         }
       },
       "oneOf": [
@@ -101,7 +113,8 @@
             "content_hash"
           ]
         }
-      ]
+      ],
+      "additionalProperties": false
     },
     "party": {
       "type": "object",
@@ -139,6 +152,9 @@
         },
         "contact_list": {
           "type": "string"
+        },
+        "meta": {
+          "type": "object"
         }
       },
       "additionalProperties": false
@@ -213,7 +229,23 @@
           "minimum": 0
         },
         "mediatype": {
-          "type": "string"
+          "type": "string",
+          "examples": [
+            "text/plain", 
+            "audio/x-wav", 
+            "audio/wav",
+            "audio/wave",
+            "audio/mpeg",
+            "audio/mp3",
+            "audio/ogg",
+            "audio/webm",
+            "audio/x-m4a",
+            "audio/aac",
+            "video/x-mp4",
+            "video/ogg",
+            "multipart/mixed",
+            "message/rfc822"
+          ]
         },
         "filename": {
           "type": "string"
@@ -222,7 +254,8 @@
           "type": "string"
         },
         "encoding": {
-          "type": "string"
+          "type": "string",
+          "enum": ["base64", "base64url", "json", "none"]
         },
         "url": {
           "type": "string",
@@ -230,6 +263,14 @@
         },
         "content_hash": {
           "type": "string"
+        },
+        "alg": {
+          "type": "string",
+          "description": "Hash algorithm (e.g., sha256)"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Hash signature (base64url encoded)"
         },
         "disposition": {
           "type": "string",
@@ -256,7 +297,7 @@
           "type": "integer",
           "minimum": 0
         },
-        "transfer-target": {
+        "transfer_target": {
           "type": "integer",
           "minimum": 0
         },
@@ -268,7 +309,7 @@
           "type": "integer",
           "minimum": 0
         },
-        "target-dialog": {
+        "target_dialog": {
           "type": "integer",
           "minimum": 0
         },
@@ -289,6 +330,9 @@
         },
         "message_id": {
           "type": "string"
+        },
+        "meta": {
+          "type": "object"
         }
       },
       "required": [
@@ -333,7 +377,7 @@
             "required": ["type"]
           },
           "then": {
-            "required": ["transferee", "transferor", "transfer-target", "original", "target-dialog"]
+            "required": ["transferee", "transferor", "transfer_target", "original", "target_dialog"]
           }
         }
       ],
@@ -387,13 +431,14 @@
           "type": "string"
         },
         "schema": {
-          "type": "string"
+          "type": ["string", "object"]
         },
         "body": {
-          "type": "string"
+          "type": ["string", "object", "array"]
         },
         "encoding": {
-          "type": "string"
+          "type": "string",
+          "enum": ["base64", "base64url", "json", "none"]
         },
         "url": {
           "type": "string",
@@ -401,6 +446,9 @@
         },
         "content_hash": {
           "type": "string"
+        },
+        "meta": {
+          "type": ["object", "array", "string"]
         }
       },
       "required": [
@@ -434,12 +482,16 @@
             },
             "filename": {
               "type": "string"
+            },
+            "meta": {
+              "type": ["object", "array", "string"]
             }
           },
           "required": [
             "start", 
             "party"
-          ]
+          ],
+          "additionalProperties": false
         }
       ]
     }

@@ -188,7 +188,7 @@ func (d *Dialog) ToMap() map[string]interface{} {
 	if d.Type != "" {
 		result["type"] = d.Type
 	}
-	result["start"] = d.StartTime.Format(time.RFC3339)
+	result["start"] = d.StartTime.Format(time.RFC3339)  // ISO 8601 format
 	
 	if d.Parties != nil {
 		result["parties"] = d.Parties
