@@ -31,3 +31,5 @@ go.work.sum
 # .idea/
 # .vscode/
 
+comprehensive-vcon.json
+simple-vcon.json

@@ -1,13 +1,17 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/robjsliwa/go-vcon/pkg/vcon"
@@ -36,6 +40,50 @@ func init() {
 	rootCmd.AddCommand(encryptCmd)
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(decryptCmd)
+	rootCmd.AddCommand(genkeyCmd)
+}
+
+// genkeyCmd represents the genkey command
+var genkeyCmd = &cobra.Command{
+	Use:   "genkey",
+	Short: "Generate a test certificate and private key",
+	Long:  `Generate a self-signed certificate and private key for testing purposes.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		keyPath, _ := cmd.Flags().GetString("key")
+		certPath, _ := cmd.Flags().GetString("cert")
+		
+		// Set default paths if not provided
+		if keyPath == "" {
+			keyPath = "test_key.pem"
+		}
+		if certPath == "" {
+			certPath = "test_cert.pem"
+		}
+		
+		generateTestKeyAndCert(keyPath, certPath)
+	},
+}
+
+func init() {
+	// Add flags to sign command
+	signCmd.Flags().StringP("key", "k", "", "Path to private key file (required)")
+	signCmd.Flags().StringP("cert", "c", "", "Path to certificate file (required)")
+	signCmd.Flags().StringP("output", "o", "", "Path to output file (defaults to input file with .signed.json extension)")
+
+	// Add flags to encrypt command
+	encryptCmd.Flags().StringP("cert", "c", "", "Path to certificate file (required)")
+	encryptCmd.Flags().StringP("output", "o", "", "Path to output file (defaults to input file with .encrypted.json extension)")
+
+	// Add flags to verify command
+	verifyCmd.Flags().StringP("cert", "c", "", "Path to certificate or CA file (required)")
+
+	// Add flags to decrypt command
+	decryptCmd.Flags().StringP("key", "k", "", "Path to private key file (required)")
+	decryptCmd.Flags().StringP("output", "o", "", "Path to output file (defaults to input file with .decrypted.json extension)")
+
+	// Add flags to genkey command
+	genkeyCmd.Flags().StringP("key", "k", "", "Path to output private key file (default: test_key.pem)")
+	genkeyCmd.Flags().StringP("cert", "c", "", "Path to output certificate file (default: test_cert.pem)")
 }
 
 // validateCmd represents the validate command
@@ -131,22 +179,89 @@ var decryptCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	// Add flags to sign command
-	signCmd.Flags().StringP("key", "k", "", "Path to private key file (required)")
-	signCmd.Flags().StringP("cert", "c", "", "Path to certificate file (required)")
-	signCmd.Flags().StringP("output", "o", "", "Path to output file (defaults to input file with .signed.json extension)")
+// generateTestKeyAndCert creates a self-signed certificate and private key
+func generateTestKeyAndCert(keyPath, certPath string) {
+	fmt.Println("Generating test certificate and private key...")
 
-	// Add flags to encrypt command
-	encryptCmd.Flags().StringP("cert", "c", "", "Path to certificate file (required)")
-	encryptCmd.Flags().StringP("output", "o", "", "Path to output file (defaults to input file with .encrypted.json extension)")
+	// Generate private key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		fmt.Printf("❌ Error generating private key: %v\n", err)
+		return
+	}
 
-	// Add flags to verify command
-	verifyCmd.Flags().StringP("cert", "c", "", "Path to certificate or CA file (required)")
+	// Create certificate template
+	notBefore := time.Now()
+	notAfter := notBefore.Add(365 * 24 * time.Hour) // Valid for 1 year
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		fmt.Printf("❌ Error generating serial number: %v\n", err)
+		return
+	}
 
-	// Add flags to decrypt command
-	decryptCmd.Flags().StringP("key", "k", "", "Path to private key file (required)")
-	decryptCmd.Flags().StringP("output", "o", "", "Path to output file (defaults to input file with .decrypted.json extension)")
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"vCon Test Organization"},
+			CommonName:   "vcon-test.example.com",
+		},
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	// Create self-signed certificate
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		fmt.Printf("❌ Error creating certificate: %v\n", err)
+		return
+	}
+
+	// Write private key to file
+	keyOut, err := os.Create(keyPath)
+	if err != nil {
+		fmt.Printf("❌ Error creating private key file: %v\n", err)
+		return
+	}
+	defer keyOut.Close()
+
+	err = pem.Encode(keyOut, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+	if err != nil {
+		fmt.Printf("❌ Error writing private key: %v\n", err)
+		return
+	}
+
+	// Write certificate to file
+	certOut, err := os.Create(certPath)
+	if err != nil {
+		fmt.Printf("❌ Error creating certificate file: %v\n", err)
+		return
+	}
+	defer certOut.Close()
+
+	err = pem.Encode(certOut, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: derBytes,
+	})
+	if err != nil {
+		fmt.Printf("❌ Error writing certificate: %v\n", err)
+		return
+	}
+
+	fmt.Printf("✅ Generated private key: %s\n", keyPath)
+	fmt.Printf("✅ Generated certificate: %s\n", certPath)
+	fmt.Println("You can now use these files for signing, verification, encryption, and decryption.")
+	fmt.Println("Example commands:")
+	fmt.Printf("  vconctl sign --key %s --cert %s input.json\n", keyPath, certPath)
+	fmt.Printf("  vconctl verify --cert %s input.signed.json\n", certPath)
+	fmt.Printf("  vconctl encrypt --cert %s input.signed.json\n", certPath)
+	fmt.Printf("  vconctl decrypt --key %s input.encrypted.json\n", keyPath)
 }
 
 // validateFile validates a vCon file

@@ -101,8 +101,7 @@
             "content_hash"
           ]
         }
-      ],
-      "additionalProperties": false
+      ]
     },
     "party": {
       "type": "object",
@@ -440,8 +439,7 @@
           "required": [
             "start", 
             "party"
-          ],
-          "additionalProperties": false
+          ]
         }
       ]
     }
