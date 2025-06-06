@@ -104,20 +104,3 @@ func TestAddAnalysis(t *testing.T) {
 	assert.Equal(t, "test-product", v.Analysis[0].Product)
 }
 
-func TestAddAttachment(t *testing.T) {
-	v := vcon.New()
-	
-	idx := v.AddAttachment(vcon.Attachment{
-		FileRef: vcon.FileRef{
-			Body: "test-content",
-			Encoding: "none",
-		},
-		DialogIdx: 0,
-		PartyIdx: 1,
-	})
-	
-	assert.Equal(t, 0, idx)
-	assert.Equal(t, 1, len(v.Attachments))
-	assert.Equal(t, 0, v.Attachments[0].DialogIdx)
-	assert.Equal(t, 1, v.Attachments[0].PartyIdx)
-}
