@@ -142,21 +142,29 @@ Save this to a file named `simple-vcon.json`:
   "parties": [
     {
       "name": "John Doe",
-      "e164": "+12025551234",
+      "tel": "+12025551234",
       "role": "customer"
     },
     {
       "name": "Jane Smith",
-      "e164": "+18005559876",
+      "tel": "+18005559876",
       "role": "agent"
     }
   ]
 }
 ```
 
-#### Comprehensive vCon
+When you run validation on this vCon file, it will pass successfully:
 
-Save this to a file named `comprehensive-vcon.json`:
+```bash
+go run ./cmd/vconctl validate simple-vcon.json
+Validating simple-vcon.json...
+✅ simple-vcon.json is a valid vCon file
+```
+
+#### Comprehensive vCon - Fails Validation
+
+Save this to a file named `comprehensive-vcon-errors.json`:
 
 ```json
 {
@@ -249,6 +257,112 @@ Save this to a file named `comprehensive-vcon.json`:
   ]
 }
 ```
+When you run validation on this vCon file, it will fail due to missing required fields and incorrect data types:
+
+```bash
+go run ./cmd/vconctl validate comprehensive-vcon.json
+Validating comprehensive-vcon.json...
+❌ Error: schema validation failed: jsonschema validation failed with 'file:///Users/robertsliwa/Documents/projects/tmp/robjsliwa/go-vcon/vcon.schema.json#'
+- at '/parties': validation failed
+  - at '/parties/0': additional properties 'loc', 'e164', 'addr' not allowed
+  - at '/parties/1': additional properties 'e164', 'addr' not allowed
+  - at '/parties/2': additional properties 'addr' not allowed
+- at '/dialog': validation failed
+  - at '/dialog/0': additional properties 'dest_parties', 'content', 'media_type', 'orig_party' not allowed
+  - at '/dialog/1': additional properties 'media_type', 'orig_party', 'dest_parties', 'content' not allowed
+- at '/analysis': validation failed
+  - at '/analysis/0': additional properties 'content' not allowed
+  - at '/analysis/1': additional properties 'content' not allowed
+- at '/attachments/0/blah': false schema
+```
+
+#### Comprehensive vCon
+
+Save this to a file named `comprehensive-vcon.json`:
+
+```bash
+{
+  "vcon": "0.0.3",
+  "uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "created_at": "2023-06-15T14:30:00Z",
+  "updated_at": "2023-06-15T15:45:12Z",
+  "subject": "Technical Support - Network Connectivity Issue",
+  "parties": [
+    {
+      "name": "Bob Johnson",
+      "tel": "+12025551111",
+      "role": "customer"
+    },
+    {
+      "name": "Sarah Lee",
+      "tel": "+18005552222"
+    },
+    {
+      "name": "AI Assistant",
+      "role": "virtual-agent"
+    }
+  ],
+  "dialog": [
+    {
+      "start": "2023-06-15T14:30:00Z",
+      "duration": 500,
+      "mediatype": "audio/mp3",
+      "originator": 0,
+      "parties": [1],
+      "interaction_id": "call-1234",
+      "type": "text",
+      "body": "Bob Johnson calls for technical support regarding a network connectivity issue.",
+      "encoding": "base64"
+    },
+    {
+      "start": "2023-06-15T14:35:30Z",
+      "duration": 500,
+      "mediatype": "text/plain",
+      "originator": 0,
+      "interaction_id": "chat-5678",
+      "type": "text",
+      "body": "Jane Smith responds with a solution for the network issue.",
+      "encoding": "base64",
+      "parties": [1]
+    }
+  ],
+  "analysis": [
+    {
+      "type": "sentiment",
+      "vendor": "AIAnalytics, Inc.",
+      "product": "SentimentAnalyzer v2.1",
+      "body": "eyJjdXN0b21lcl9zZW50aW1lbnQiOiAicG9zaXRpdmUiLCAiYWdlbnRfcGVyZm9ybWFuY2UiOiAiZXhjZWxsZW50In0=",
+      "encoding": "base64"
+
+    },
+    {
+      "type": "transcription",
+      "vendor": "Transcribe Pro",
+      "product": "AutoTranscribe v3.0",
+      "url": "https://example.com/transcripts/call-1234.txt",
+      "content_hash": "sha256:b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3"
+    }
+  ],
+  "attachments": [
+    {
+      "body": "eyJuZXR3b3JrX2xvZ3MiOiAidHJ1bmNhdGVkIGZvciByZWFkYWJpbGl0eSJ9",
+      "encoding": "base64",
+      "party": 0,
+      "start": "2023-06-15T14:30:00Z"
+    }
+  ]
+}
+```
+
+When you run vconctl on this vCon file, it will pass validation:
+
+```bash
+go run ./cmd/vconctl validate comprehensive-vcon.json
+Validating comprehensive-vcon.json...
+✅ comprehensive-vcon.json is a valid vCon file
+```
+
+#### vconctl Commands
 
 You can use these sample files to test the vconctl commands:
 

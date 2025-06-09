@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // ValidAttachmentEncodings defines the allowed encoding types for attachments
@@ -20,6 +21,20 @@ const (
 	// AttachmentTypeDocument is for document attachments
 	AttachmentTypeDocument AttachmentType = "document"
 )
+
+// Attachment is a file linked to a dialog/party.
+type Attachment struct {
+	Body        string      `json:"body,omitempty"`
+	Encoding    string      `json:"encoding,omitempty"`
+	URL         string      `json:"url,omitempty"`
+	ContentHash string      `json:"content_hash,omitempty"`
+	DialogIdx   int         `json:"dialog,omitempty"`
+	PartyIdx    int         `json:"party"`
+	StartTime   time.Time   `json:"start"`
+	MediaType   string      `json:"mediatype,omitempty"`
+	Filename    string      `json:"filename,omitempty"`
+	Meta        interface{} `json:"meta,omitempty"`
+}
 
 // NewAttachment creates a new Attachment with the specified type, body, and encoding
 func NewAttachment(attachmentType string, body interface{}, encoding string) (*Attachment, error) {

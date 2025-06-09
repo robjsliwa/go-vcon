@@ -2,6 +2,7 @@ package vcon
 
 import (
 	"crypto/sha1"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
+
+//go:embed schema/vcon.json
+var vconSchema []byte
 
 // SpecVersion is the draft version this library targets.
 const SpecVersion = "0.0.3"
@@ -100,20 +105,6 @@ type Analysis struct {
 	Meta        interface{} `json:"meta,omitempty"`
 }
 
-// Attachment is a file linked to a dialog/party.
-type Attachment struct {
-	Body        string      `json:"body,omitempty"`
-	Encoding    string      `json:"encoding,omitempty"`
-	URL         string      `json:"url,omitempty"`
-	ContentHash string      `json:"content_hash,omitempty"`
-	DialogIdx   int         `json:"dialog,omitempty"`
-	PartyIdx    int         `json:"party"`
-	StartTime   time.Time   `json:"start"`
-	MediaType   string      `json:"mediatype,omitempty"`
-	Filename    string      `json:"filename,omitempty"`
-	Meta        interface{} `json:"meta,omitempty"`
-}
-
 // ProcessProperties handles properties based on the provided mode
 func ProcessProperties(obj map[string]interface{}, allowedProps map[string]struct{}, mode string) map[string]interface{} {
 	if obj == nil {
@@ -194,6 +185,26 @@ func BuildFromJSON(jsonStr string, propertyHandling ...string) (*VCon, error) {
 	if err := json.Unmarshal([]byte(jsonStr), &rawMap); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
+
+	// Schema validation section
+    compiler := jsonschema.NewCompiler()
+    compiler.DefaultDraft(jsonschema.Draft2020)
+    
+    var schemaData interface{}
+	if err := json.Unmarshal(vconSchema, &schemaData); err != nil {
+		return nil, err
+	}
+    if err := compiler.AddResource("vcon.schema.json", schemaData); err != nil {
+        return nil, err
+    }
+    schema, err := compiler.Compile("vcon.schema.json")
+    if err != nil {
+        return nil, err
+    }
+
+    if err := schema.Validate(rawMap); err != nil {
+        return nil, fmt.Errorf("schema validation failed: %w", err)
+    }
 
 	// Process top-level properties
 	processedMap := ProcessProperties(rawMap, AllowedVConProperties, handling)

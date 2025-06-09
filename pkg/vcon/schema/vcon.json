@@ -113,8 +113,7 @@
             "content_hash"
           ]
         }
-      ],
-      "additionalProperties": false
+      ]
     },
     "party": {
       "type": "object",
@@ -198,7 +197,7 @@
           "minimum": 0
         },
         "parties": {
-          "oneOf": [
+          "anyOf": [
             { "type": "integer", "minimum": 0 },
             { 
               "type": "array", 
@@ -490,10 +489,10 @@
           "required": [
             "start", 
             "party"
-          ],
-          "additionalProperties": false
+          ]
         }
-      ]
+      ],
+      "unevaluatedProperties": false
     }
   }
 }

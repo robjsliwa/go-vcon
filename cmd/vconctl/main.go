@@ -266,26 +266,15 @@ func generateTestKeyAndCert(keyPath, certPath string) {
 
 // validateFile validates a vCon file
 func validateFile(path string) {
-	fmt.Printf("Validating %s...\n", path)
+    fmt.Printf("Validating %s...\n", path)
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		fmt.Printf("❌ Error reading file: %v\n", err)
-		return
-	}
+    _, err := vcon.LoadFromFile(path, vcon.PropertyHandlingStrict)
+    if err != nil {
+        fmt.Printf("❌ Error: %v\n", err)
+        return
+    }
 
-	var v vcon.VCon
-	if err := json.Unmarshal(data, &v); err != nil {
-		fmt.Printf("❌ Error parsing JSON: %v\n", err)
-		return
-	}
-
-	if err := v.Validate(); err != nil {
-		fmt.Printf("❌ Invalid vCon: %v\n", err)
-		return
-	}
-
-	fmt.Printf("✅ %s is a valid vCon file\n", path)
+    fmt.Printf("✅ %s is a valid vCon file\n", path)
 }
 
 // signFile signs a vCon file
