@@ -508,24 +508,6 @@ func LoadFromURL(url string, propertyHandling ...string) (*VCon, error) {
 	return BuildFromJSON(string(data), propertyHandling...)
 }
 
-// PostToURL posts a VCon to a URL
-func (v *VCon) PostToURL(url string, headers map[string]string) (*http.Response, error) {
-	jsonData := v.ToJSON()
-	
-	req, err := http.NewRequest("POST", url, strings.NewReader(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	
-	req.Header.Set("Content-Type", "application/json")
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
-	
-	client := &http.Client{}
-	return client.Do(req)
-}
-
 // Validate validates the VCon structure
 func (v *VCon) Validate() error {
 	// Check required fields
