@@ -18,7 +18,7 @@ The project also includes a command-line tool (`vconctl`) for performing common 
 ### Library
 
 ```bash
-go get github.com/robjsliwa/go-vcon
+go get -u github.com/robjsliwa/go-vcon
 ```
 
 ### Command-line Tool
@@ -33,6 +33,34 @@ Or build from source:
 git clone https://github.com/robjsliwa/go-vcon.git
 cd go-vcon
 go build -o vconctl ./cmd/vconctl
+```
+
+## Development
+
+### Running Tests
+
+To run the test suite:
+
+```bash
+go test ./...
+```
+
+### Test Coverage
+
+To run tests with code coverage:
+
+```bash
+# Run tests with coverage
+go test -cover ./...
+
+# Generate a coverage profile
+go test -coverprofile=coverage.out ./...
+
+# Display coverage in the browser
+go tool cover -html=coverage.out
+
+# Get a coverage summary in the terminal
+go tool cover -func=coverage.out
 ```
 
 ## Usage
