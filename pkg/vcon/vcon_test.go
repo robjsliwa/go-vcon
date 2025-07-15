@@ -13,7 +13,7 @@ import (
 
 func TestNew(t *testing.T) {
 	v := vcon.New()
-	assert.Equal(t, vcon.SpecVersion, v.Vcon) // Updated from v.Version to v.Vcon
+	assert.Equal(t, vcon.SpecVersion, v.Vcon)
 	assert.NotEqual(t, uuid.UUID{}, v.UUID)
 	assert.False(t, v.CreatedAt.IsZero())
 }
