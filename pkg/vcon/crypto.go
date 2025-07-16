@@ -1,7 +1,9 @@
 package vcon
 
 import (
+	"bytes"
 	"crypto"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -13,192 +15,174 @@ import (
 
 // SignedVCon wraps a signed container.
 type SignedVCon struct {
-	JWS string `json:"jws"`
+	JSON map[string]any `json:"jws"`
 }
 
 // EncryptedVCon wraps an encrypted container.
 type EncryptedVCon struct {
-	JWE string `json:"jwe"`
+	JSON map[string]any `json:"jwe"`
 }
 
-// Sign serializes v and returns a detached-payload JWS (General JSON).
-func (v *VCon) Sign(signer crypto.Signer, certs []*x509.Certificate) (*SignedVCon, error) {
-	payload, err := json.Marshal(v)
-	if err != nil {
-		return nil, err
+// Sign generates a General‑JSON JWS with detached payload.
+func (v *VCon) Sign(signer crypto.Signer, chain []*x509.Certificate) (*SignedVCon, error) {
+	payload, err := Canonicalise(v)
+	if err != nil { return nil, err }
+
+	// embed x5c
+	var x5c []string
+	for _, c := range chain {
+		x5c = append(x5c, base64.StdEncoding.EncodeToString(c.Raw))
 	}
 
-	// Create a SigningKey with the provided signer
-	signingKey := jose.SigningKey{
-		Algorithm: jose.RS256,
-		Key:       signer,
-	}
+	j, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: signer},
+		(&jose.SignerOptions{}).WithHeader("x5c", x5c).WithHeader("uuid", v.UUID))
+	if err != nil { return nil, err }
+	obj, err := j.Sign(payload)
+	if err != nil { return nil, err }
 
-	// Set up the signer options
-	opts := &jose.SignerOptions{}
+	general := obj.FullSerialize()
+	var gen map[string]any
+	if err = json.Unmarshal([]byte(general), &gen); err != nil { return nil, err }
+	gen["payload"] = base64.RawURLEncoding.EncodeToString(payload)
 
-	// Add the X.509 certificate chain to the JWS header if provided
-	if len(certs) > 0 {
-		// Convert raw certificate data for X5c header
-		var rawCerts []string
-		for _, cert := range certs {
-			// X5c expects base64 standard encoded certs (not raw bytes)
-			rawCerts = append(rawCerts, base64.StdEncoding.EncodeToString(cert.Raw))
-		}
-
-		// Set the X5c header with properly encoded certificate data
-		opts = opts.WithHeader(jose.HeaderKey("x5c"), rawCerts)
-	}
-
-	// Create the signer
-	j, err := jose.NewSigner(signingKey, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	// Sign the payload
-	jws, err := j.Sign(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	// Serialize the JWS
-	serialised, err := jws.CompactSerialize()
-	if err != nil {
-		return nil, err
-	}
-	return &SignedVCon{JWS: serialised}, nil
+	return &SignedVCon{JSON: gen}, nil
 }
 
-// Verify checks signature and returns the inner VCon.
+// Verify validates all signatures, certificate chains and canonicalization.
+// On success it returns the decoded VCon.
 func (sv *SignedVCon) Verify(rootPool *x509.CertPool) (*VCon, error) {
-	// Make sure to specify RS256 as the allowed signature algorithm
-	jws, err := jose.ParseSigned(sv.JWS, []jose.SignatureAlgorithm{jose.RS256})
+	raw, err := json.Marshal(sv.JSON)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal signed object: %w", err)
 	}
 
-	// Extract certificate chain from x5c header
-	if len(jws.Signatures) == 0 {
-		return nil, errors.New("no signature found in JWS")
-	}
-
-	sig := jws.Signatures[0]
-	
-	// Get the x5c header - it should be in the protected headers
-	x5cHeaderRaw, ok := sig.Protected.ExtraHeaders[jose.HeaderKey("x5c")]
-	if !ok {
-		return nil, errors.New("no x5c header in JWS")
-	}
-
-	// Parse the certificate chain from the x5c header
-	var certChain []*x509.Certificate
-	
-	// Try to extract the x5c header as an array of strings
-	x5cStrings, ok := x5cHeaderRaw.([]interface{})
-	if !ok {
-		return nil, errors.New("x5c header is not in expected format")
-	}
-
-	for _, item := range x5cStrings {
-		certStr, ok := item.(string)
-		if !ok {
-			return nil, errors.New("certificate in x5c is not a string")
-		}
-
-		// Decode the base64 certificate
-		certBytes, err := base64.StdEncoding.DecodeString(certStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode certificate: %w", err)
-		}
-
-		// Parse the certificate
-		cert, err := x509.ParseCertificate(certBytes)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse certificate: %w", err)
-		}
-		
-		certChain = append(certChain, cert)
-	}
-
-	if len(certChain) == 0 {
-		return nil, errors.New("no certificates found in x5c header")
-	}
-
-	// Verify the certificate chain
-	leafCert := certChain[0]
-	intermediates := x509.NewCertPool()
-	for _, cert := range certChain[1:] {
-		intermediates.AddCert(cert)
-	}
-
-	verifyOpts := x509.VerifyOptions{
-		Roots:         rootPool,
-		Intermediates: intermediates,
-	}
-
-	if _, err := leafCert.Verify(verifyOpts); err != nil {
-		return nil, fmt.Errorf("certificate verification failed: %w", err)
-	}
-
-	// Verify the signature using the leaf certificate's public key
-	payload, err := jws.Verify(leafCert.PublicKey)
+	jws, err := jose.ParseSigned(string(raw), []jose.SignatureAlgorithm{jose.RS256})
 	if err != nil {
-		return nil, fmt.Errorf("signature verification failed: %w", err)
+		return nil, fmt.Errorf("parse JWS: %w", err)
 	}
 
-	var v VCon
-	if err = json.Unmarshal(payload, &v); err != nil {
-		return nil, err
+	var (
+		refPayload []byte // canonical payload after first successful sig
+		vc         *VCon  // decoded vCon to return
+	)
+
+	for idx, sig := range jws.Signatures {
+		// 2.a validate and extract x5c chain
+		chains, err := sig.Header.Certificates(x509.VerifyOptions{Roots: rootPool})
+		if err != nil {
+			return nil, fmt.Errorf("sig[%d] bad cert chain: %w", idx, err)
+		}
+		leaf := chains[0][0] // leaf cert is first in verified chain
+
+		// 2.b verify signature with leaf’s public key
+		payload, err := jws.Verify(leaf.PublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("sig[%d] signature invalid: %w", idx, err)
+		}
+
+		if idx == 0 {
+			refPayload = payload
+
+			var v VCon
+			if err := json.Unmarshal(payload, &v); err != nil {
+				return nil, fmt.Errorf("decode vCon: %w", err)
+			}
+
+			canon, _ := Canonicalise(&v)
+			if !bytes.Equal(canon, payload) {
+				return nil, errors.New("payload not RFC 8785 canonical")
+			}
+
+			if hu, ok := sig.Header.ExtraHeaders["uuid"].(string); ok && hu != v.UUID {
+				return nil, errors.New("header uuid ≠ body uuid")
+			}
+
+			vc = &v
+		} else {
+			if !bytes.Equal(refPayload, payload) {
+				return nil, fmt.Errorf("sig[%d] payload mismatch", idx)
+			}
+		}
 	}
-	return &v, nil
+
+	if vc == nil {
+		return nil, errors.New("no valid signatures")
+	}
+	return vc, nil
 }
 
-// Encrypt encrypts a SignedVCon for the given recipients.
-func (sv *SignedVCon) Encrypt(recipients []jose.Recipient) (*EncryptedVCon, error) {
-	enc, err := jose.NewMultiEncrypter(jose.A256GCM, recipients, nil)
-	if err != nil {
-		return nil, err
+
+// Encrypt turns a *signed* vCon (General-JSON JWS in sv.JSON) into a
+// complete-serialization JWE.
+func (sv *SignedVCon) Encrypt(rcpts []jose.Recipient) (*EncryptedVCon, error) {
+	if len(rcpts) == 0 {
+		return nil, errors.New("no recipients supplied")
 	}
-	jwe, err := enc.Encrypt([]byte(sv.JWS))
+
+	plain, err := Canonicalise(sv.JSON)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("canonicalise signed vCon: %w", err)
 	}
-	s, _ := jwe.CompactSerialize()
-	return &EncryptedVCon{JWE: s}, nil
+
+	var tmp struct{ UUID string `json:"uuid"` }
+	if err := json.Unmarshal(plain, &tmp); err != nil {
+		return nil, fmt.Errorf("extract uuid: %w", err)
+	}
+
+	opts := (&jose.EncrypterOptions{}).
+		// typ & cty aren’t strictly required but useful for tooling
+		WithType("vcon+jwe").
+		WithContentType("application/vcon+json").
+		WithHeader("uuid", tmp.UUID)
+
+	enc, err := jose.NewMultiEncrypter(jose.A256CBC_HS512, rcpts, opts)
+	if err != nil {
+		return nil, fmt.Errorf("new encrypter: %w", err)
+	}
+
+	jweObj, err := enc.Encrypt(plain)
+	if err != nil {
+		return nil, fmt.Errorf("encrypt vCon: %w", err)
+	}
+
+	var jweMap map[string]any
+	if err := json.Unmarshal([]byte(jweObj.FullSerialize()), &jweMap); err != nil {
+		return nil, fmt.Errorf("unmarshal JWE: %w", err)
+	}
+	jweMap["unprotected"] = map[string]any{
+		"uuid": tmp.UUID,
+		"cty":  "application/vcon+json",
+		"enc":  string(jose.A256CBC_HS512),
+	}
+
+	return &EncryptedVCon{JSON: jweMap}, nil
 }
 
-func (ev *EncryptedVCon) Decrypt(key any) (*SignedVCon, error) {
-	// Define allowed key algorithms
-	keyAlgs := []jose.KeyAlgorithm{
-		jose.RSA_OAEP,
-		jose.RSA_OAEP_256,
-		jose.ECDH_ES,
-		jose.ECDH_ES_A128KW,
-		jose.ECDH_ES_A192KW,
-		jose.ECDH_ES_A256KW,
-	}
-
-	// Define allowed content encryption algorithms
-	encAlgs := []jose.ContentEncryption{
-		jose.A256GCM,
-	}
-
-	jwe, err := jose.ParseEncrypted(ev.JWE, keyAlgs, encAlgs)
+// Decrypt unwraps the JWE using the supplied **private RSA key**.
+// It returns the plaintext object as a generic map.
+func (ev *EncryptedVCon) Decrypt(priv *rsa.PrivateKey) (map[string]any, error) {
+	raw, err := json.Marshal(ev.JSON)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal JWE: %w", err)
 	}
 
-	decrypted, err := jwe.Decrypt(key)
+	jweObj, err := jose.ParseEncrypted(
+		string(raw),
+		[]jose.KeyAlgorithm{jose.RSA_OAEP, jose.RSA_OAEP_256},
+		[]jose.ContentEncryption{jose.A256CBC_HS512},
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse JWE: %w", err)
 	}
 
-	// Validate that the decrypted content is a valid JWS
-	signedVCon := &SignedVCon{JWS: string(decrypted)}
-	if _, err := jose.ParseSigned(signedVCon.JWS, []jose.SignatureAlgorithm{jose.RS256}); err != nil {
-		return nil, fmt.Errorf("decrypted content is not a valid JWS: %w", err)
+	plain, err := jweObj.Decrypt(priv)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt JWE: %w", err)
 	}
 
-	return signedVCon, nil
+	var out map[string]any
+	if err := json.Unmarshal(plain, &out); err != nil {
+		return nil, fmt.Errorf("decode plaintext: %w", err)
+	}
+	return out, nil
 }

@@ -108,49 +108,130 @@ func main() {
 The `vconctl` tool provides several commands for working with vCon files:
 
 ```
-vconctl is a command line utility for validating, signing, encrypting,
-verifying, and decrypting vCon (Virtual Conversation) files.
+vconctl is a command-line utility for validating, signing, encrypting, verifying, and decrypting vCon (Virtual Conversation) files.
 
 Usage:
   vconctl [command]
 
 Available Commands:
   decrypt     Decrypt an encrypted vCon file
-  encrypt     Encrypt a vCon file
+  encrypt     Encrypt a signed vCon for one recipient
+  genkey      Generate a test RSA key pair and self-signed certificate
   help        Help about any command
-  sign        Sign a vCon file
+  sign        Sign a vCon file using a private key and certificate
   validate    Validate a vCon file
-  verify      Verify a signed vCon file
+  verify      Verify the signature on a signed vCon
 ```
+
+### Command Options
+
+#### validate
+```bash
+vconctl validate [file1] [file2] ...
+```
+- Validates one or more vCon files against the JSON schema
+- Returns ✅ for valid files, ❌ with error details for invalid files
+
+#### genkey
+```bash
+vconctl genkey [flags]
+```
+Flags:
+- `--key, -k`: Output private-key path (default: test_key.pem)
+- `--cert, -c`: Output certificate path (default: test_cert.pem)
+
+#### sign
+```bash
+vconctl sign [file] [flags]
+```
+Flags:
+- `--key, -k`: Path to private key file (required)
+- `--cert, -c`: Path to certificate file (required)
+- `--output, -o`: Path to output file (defaults to `<file>.signed.json`)
+
+#### verify
+```bash
+vconctl verify [file] [flags]
+```
+Flags:
+- `--cert, -c`: Path to trust anchor (leaf or CA) (required)
+
+#### encrypt
+```bash
+vconctl encrypt [file] [flags]
+```
+Flags:
+- `--cert, -c`: Path to recipient certificate (required)
+- `--output, -o`: Path to output file (defaults to `<file>.encrypted.json`)
+
+#### decrypt
+```bash
+vconctl decrypt [file] [flags]
+```
+Flags:
+- `--key, -k`: Path to private key file (required)
+- `--output, -o`: Path to output file (defaults to `<file>.decrypted.json`)
 
 #### Validate a vCon
 
 ```bash
-vconctl validate --file sample.json
+vconctl validate simple-vcon.json
+```
+
+#### Generate Test Keys and Certificates
+
+Before signing or encrypting vCon files, you'll need a key pair and certificate. You can generate test ones:
+
+```bash
+vconctl genkey
+```
+
+This will create `test_key.pem` (private key) and `test_cert.pem` (certificate) in the current directory. You can specify custom paths:
+
+```bash
+vconctl genkey --key my_private_key.pem --cert my_certificate.pem
 ```
 
 #### Sign a vCon
 
 ```bash
-vconctl sign --file sample.json --cert certificate.pem --key private-key.pem --out signed.json
+vconctl sign simple-vcon.json --key test_key.pem --cert test_cert.pem
+```
+
+This creates `simple-vcon.signed.json`. You can specify a custom output file:
+
+```bash
+vconctl sign simple-vcon.json --key test_key.pem --cert test_cert.pem --output my_signed_vcon.json
 ```
 
 #### Verify a Signed vCon
 
 ```bash
-vconctl verify --file signed.json --cert certificate.pem
+vconctl verify simple-vcon.signed.json --cert test_cert.pem
 ```
 
 #### Encrypt a Signed vCon
 
 ```bash
-vconctl encrypt --file signed.json --cert certificate.pem --out encrypted.json
+vconctl encrypt simple-vcon.signed.json --cert test_cert.pem
+```
+
+This creates `simple-vcon.signed.encrypted.json`. You can specify a custom output file:
+
+```bash
+vconctl encrypt simple-vcon.signed.json --cert test_cert.pem --output my_encrypted_vcon.json
 ```
 
 #### Decrypt an Encrypted vCon
 
 ```bash
-vconctl decrypt --file encrypted.json --key private-key.pem --out decrypted.json
+vconctl decrypt simple-vcon.signed.encrypted.json --key test_key.pem
+```
+
+This creates `simple-vcon.signed.encrypted.decrypted.json`. You can specify a custom output file:
+
+```bash
+vconctl decrypt simple-vcon.signed.encrypted.json --key test_key.pem --output my_decrypted_vcon.json
 ```
 
 ### Sample vCon Files
@@ -185,9 +266,9 @@ Save this to a file named `simple-vcon.json`:
 When you run validation on this vCon file, it will pass successfully:
 
 ```bash
-go run ./cmd/vconctl validate simple-vcon.json
-Validating simple-vcon.json...
-✅ simple-vcon.json is a valid vCon file
+vconctl validate simple-vcon.json
+Validating simple-vcon.json…
+✅ simple-vcon.json is valid
 ```
 
 #### Comprehensive vCon - Fails Validation
@@ -288,8 +369,8 @@ Save this to a file named `comprehensive-vcon-errors.json`:
 When you run validation on this vCon file, it will fail due to missing required fields and incorrect data types:
 
 ```bash
-go run ./cmd/vconctl validate comprehensive-vcon.json
-Validating comprehensive-vcon.json...
+vconctl validate comprehensive-vcon-errors.json
+Validating comprehensive-vcon-errors.json…
 ❌ Error: schema validation failed: jsonschema validation failed with 'file:///Users/robertsliwa/Documents/projects/tmp/robjsliwa/go-vcon/vcon.schema.json#'
 - at '/parties': validation failed
   - at '/parties/0': additional properties 'loc', 'e164', 'addr' not allowed
@@ -385,9 +466,9 @@ Save this to a file named `comprehensive-vcon.json`:
 When you run vconctl on this vCon file, it will pass validation:
 
 ```bash
-go run ./cmd/vconctl validate comprehensive-vcon.json
-Validating comprehensive-vcon.json...
-✅ comprehensive-vcon.json is a valid vCon file
+vconctl validate comprehensive-vcon.json
+Validating comprehensive-vcon.json…
+✅ comprehensive-vcon.json is valid
 ```
 
 #### vconctl Commands
@@ -402,18 +483,76 @@ vconctl validate comprehensive-vcon.json
 # Generate test key and certificate for signing/encryption
 vconctl genkey
 
-# Sign
+# Sign (requires key and certificate)
 vconctl sign simple-vcon.json --cert test_cert.pem --key test_key.pem
 
-# Verify
+# Verify (requires certificate/CA)
 vconctl verify simple-vcon.signed.json --cert test_cert.pem
 
-# Encrypt
+# Encrypt (requires certificate for recipient)
 vconctl encrypt simple-vcon.signed.json --cert test_cert.pem
 
-# Decrypt
+# Decrypt (requires private key)
 vconctl decrypt simple-vcon.signed.encrypted.json --key test_key.pem
 ```
+
+### Complete Workflow Example
+
+Here's a complete example showing the full workflow from validation through encryption and decryption:
+
+```bash
+# 1. Validate the original vCon
+vconctl validate simple-vcon.json
+
+# 2. Generate test keys and certificate
+vconctl genkey
+
+# 3. Sign the vCon
+vconctl sign simple-vcon.json --cert test_cert.pem --key test_key.pem
+# This creates simple-vcon.signed.json
+
+# 4. Verify the signed vCon
+vconctl verify simple-vcon.signed.json --cert test_cert.pem
+
+# 5. Encrypt the signed vCon
+vconctl encrypt simple-vcon.signed.json --cert test_cert.pem
+# This creates simple-vcon.signed.encrypted.json
+
+# 6. Decrypt the encrypted vCon
+vconctl decrypt simple-vcon.signed.encrypted.json --key test_key.pem
+# This creates simple-vcon.signed.encrypted.decrypted.json
+
+# 7. Verify the decrypted content (optional)
+vconctl verify simple-vcon.signed.encrypted.decrypted.json --cert test_cert.pem
+```
+
+### Differences from Python Reference Implementation
+
+While this Go implementation follows the same core vCon specification as the Python reference implementation, there are some differences in the command-line interface:
+
+**Similarities:**
+- All core cryptographic operations (sign, verify, encrypt, decrypt)
+- JSON schema validation
+- Support for the same vCon specification (version 0.0.3)
+- Compatible file formats and outputs
+
+**Key Differences:**
+- **Simpler command structure**: Go version uses direct commands (`vconctl sign file.json`) vs Python's more complex argument structure
+- **Flag-based options**: Go version uses `--key`, `--cert`, `--output` flags instead of positional arguments
+- **Automatic output naming**: Go version automatically generates output filenames (e.g., `file.signed.json`) unless specified
+- **Focused scope**: Go version focuses on core vCon operations, while Python version includes additional features like Zoom/Meet integration and filtering plugins
+- **Built-in key generation**: Go version includes `genkey` command for easy test key/certificate generation
+
+**Missing Features (compared to Python):**
+- Zoom meeting import (`add in-zoom`)
+- Google Meet import (`add in-meet`) 
+- Email message import (`add in-email`)
+- Filter plugins system
+- HTTP GET/POST operations
+- Recording file processing
+- Advanced analysis features
+
+The Go implementation is designed to be a clean, focused tool for core vCon operations, while the Python implementation provides a more comprehensive toolkit for various vCon workflows.
 
 ## Contributing
 
