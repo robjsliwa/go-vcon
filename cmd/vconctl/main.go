@@ -18,8 +18,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ====================== root initialisation =========================
-
 var rootCmd = &cobra.Command{
 	Use:   "vconctl",
 	Short: "vconctl - a tool for working with vCon files",
@@ -54,7 +52,7 @@ func init() {
 	genkeyCmd.Flags().StringP("cert", "c", "", "Output certificate path (default: test_cert.pem)")
 }
 
-// ============================ validate ==============================
+// Command: validate
 
 var validateCmd = &cobra.Command{
 	Use:   "validate [file]",
@@ -72,7 +70,7 @@ var validateCmd = &cobra.Command{
 	},
 }
 
-// ============================== sign ================================
+// Command: sign
 
 var signCmd = &cobra.Command{
 	Use:   "sign [file]",
@@ -94,7 +92,6 @@ var signCmd = &cobra.Command{
 func signFile(path, keyPath, certPath, outPath string) {
 	fmt.Printf("Signing %s…\n", path)
 
-	// ---------- read & unmarshal vCon ----------
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		die("reading vCon", err)
@@ -104,17 +101,14 @@ func signFile(path, keyPath, certPath, outPath string) {
 		die("parsing JSON", err)
 	}
 
-	// ---------- keys & cert ----------
 	priv := readPrivateKey(keyPath)
 	cert := readCertificate(certPath)
 
-	// ---------- sign ----------
 	signed, err := v.Sign(priv, []*x509.Certificate{cert})
 	if err != nil {
 		die("signing vCon", err)
 	}
 
-	// ---------- output ----------
 	if outPath == "" {
 		ext := filepath.Ext(path)
 		outPath = path[:len(path)-len(ext)] + ".signed" + ext
@@ -125,7 +119,7 @@ func signFile(path, keyPath, certPath, outPath string) {
 	fmt.Printf("✅ Signed vCon written to %s\n", outPath)
 }
 
-// ============================= verify ===============================
+// Command: verify
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify [file]",
@@ -145,16 +139,13 @@ var verifyCmd = &cobra.Command{
 func verifyFile(path, caPath string) {
 	fmt.Printf("Verifying %s…\n", path)
 
-	// -------- load bare JWS --------
 	jwsMap := readBareJWS(path)
 
-	// -------- trust anchors --------
 	root := x509.NewCertPool()
 	if ok := appendPEMToPool(root, caPath); !ok {
 		die("loading trust anchor", fmt.Errorf("invalid PEM in %s", caPath))
 	}
 
-	// -------- verify --------
 	signed := vcon.SignedVCon{JSON: jwsMap}
 	vc, err := signed.Verify(root)
 	if err != nil {
@@ -166,7 +157,7 @@ func verifyFile(path, caPath string) {
 		vc.Subject, vc.UUID, vc.CreatedAt, len(vc.Parties))
 }
 
-// ============================ encrypt ===============================
+// Command: encrypt
 
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt [file]",
@@ -209,7 +200,7 @@ func encryptFile(path, certPath, outPath string) {
 	fmt.Printf("✅ Encrypted vCon written to %s\n", outPath)
 }
 
-// ========================= decrypt & misc ===========================
+// Command decrypt
 
 var decryptCmd = &cobra.Command{
 	Use:   "decrypt [file]",
@@ -240,7 +231,6 @@ func decryptFile(path, keyPath, outPath string) {
 		die("parsing JSON", err)
 	}
 
-	// Extract the JWE content from the wrapper
 	jweContent, ok := m["jwe"]
 	if !ok {
 		die("extracting JWE", fmt.Errorf("no 'jwe' field found"))
@@ -253,7 +243,6 @@ func decryptFile(path, keyPath, outPath string) {
 	encrypted := vcon.EncryptedVCon{JSON: jweMap}
 	priv := readPrivateKey(keyPath)
 
-	// Decrypt
 	decrypted, err := encrypted.Decrypt(priv)
 	if err != nil {
 		die("decrypting", err)
@@ -269,7 +258,7 @@ func decryptFile(path, keyPath, outPath string) {
 	fmt.Printf("✅ Decrypted vCon written to %s\n", outPath)
 }
 
-// ============================== genkey ===============================
+// Command: genkey
 
 var genkeyCmd = &cobra.Command{
 	Use:   "genkey",
@@ -358,7 +347,7 @@ func generateKeyPair(keyPath, certPath string) {
 	fmt.Printf("✅ Certificate written to %s\n", certPath)
 }
 
-// ========================= helper utils ============================
+// helper utils
 
 func readBareJWS(path string) map[string]any {
 	raw, err := os.ReadFile(path)
