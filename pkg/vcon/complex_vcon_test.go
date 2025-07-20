@@ -11,7 +11,7 @@ import (
 // TestValidComplexVCon tests creation of a valid complex VCon with multiple components
 func TestValidComplexVCon(t *testing.T) {
 	// Create a new VCon
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "Complex Call Scenario"
 
 	// Add multiple parties
@@ -151,7 +151,7 @@ func TestValidComplexVCon(t *testing.T) {
 // TestInvalidPartyReference tests validation of invalid party references
 func TestInvalidPartyReference(t *testing.T) {
 	// Create a VCon with a dialog referencing non-existent party
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "Invalid Party Reference Test"
 	
 	// Add only one party
@@ -188,7 +188,7 @@ func TestInvalidPartyReference(t *testing.T) {
 // TestInvalidDialogReference tests validation of invalid dialog references
 func TestInvalidDialogReference(t *testing.T) {
 	// Create a VCon with analysis referencing non-existent dialog
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "Invalid Dialog Reference Test"
 	
 	// Add a party
@@ -231,7 +231,7 @@ func TestInvalidDialogReference(t *testing.T) {
 // TestMissingRequiredFields tests validation of VCons with missing required fields
 func TestMissingRequiredFields(t *testing.T) {
 	// Create a VCon with dialog missing required start time
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "Missing Required Fields Test"
 	
 	// Add a party
@@ -267,7 +267,7 @@ func TestMissingRequiredFields(t *testing.T) {
 // TestComplexConferenceScenario tests a complex conference call scenario
 func TestComplexConferenceScenario(t *testing.T) {
 	// Create a VCon for a conference call with join/leave events
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "Complex Conference Call"
 	
 	// Add multiple parties

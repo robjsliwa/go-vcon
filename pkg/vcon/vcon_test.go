@@ -12,7 +12,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	v := vcon.New()
+	v := vcon.New("example.com")
 	assert.Equal(t, vcon.SpecVersion, v.Vcon)
 	assert.NotEqual(t, uuid.UUID{}, v.UUID)
 	assert.False(t, v.CreatedAt.IsZero())
@@ -20,7 +20,7 @@ func TestNew(t *testing.T) {
 
 func TestRoundTrip(t *testing.T) {
 	// Create a new vcon for testing
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "demo"
 
 	idx := v.AddParty(vcon.Party{Name: "Alice"})
@@ -59,7 +59,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestAddParty(t *testing.T) {
-	v := vcon.New()
+	v := vcon.New("example.com")
 	
 	idx1 := v.AddParty(vcon.Party{Name: "Alice"})
 	idx2 := v.AddParty(vcon.Party{Name: "Bob"})
@@ -72,7 +72,7 @@ func TestAddParty(t *testing.T) {
 }
 
 func TestAddDialog(t *testing.T) {
-	v := vcon.New()
+	v := vcon.New("example.com")
 	
 	now := time.Now().UTC()
 	idx := v.AddDialog(vcon.Dialog{
@@ -88,7 +88,7 @@ func TestAddDialog(t *testing.T) {
 }
 
 func TestAddAnalysis(t *testing.T) {
-	v := vcon.New()
+	v := vcon.New("example.com")
 	
 	idx := v.AddAnalysis(vcon.Analysis{
 		Type: "transcript",

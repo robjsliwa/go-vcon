@@ -71,7 +71,7 @@ func TestSignAndVerify(t *testing.T) {
 	rootPool.AddCert(certs[0])
 
 	// Create a test vCon
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "Test vCon"
 	v.AddParty(vcon.Party{Name: "Test Person"})
 
@@ -98,7 +98,7 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a test vCon
-	v := vcon.New()
+	v := vcon.New("example.com")
 	v.Subject = "Test vCon"
 	v.AddParty(vcon.Party{Name: "Test Person"})
 
@@ -158,7 +158,7 @@ func TestCompleteRoundTrip(t *testing.T) {
 	rootPool.AddCert(certs[0])
 
 	// Step 1: Create original vCon
-	original := vcon.New()
+	original := vcon.New("example.com")
 	original.Subject = "Complete Round Trip Test"
 	partyIdx := original.AddParty(vcon.Party{
 		Name: "Alice Smith",
@@ -239,7 +239,7 @@ func TestCompleteRoundTrip(t *testing.T) {
 func TestVerifyRoundTrip(t *testing.T) {
     leafKey, leafCert, rootPool := loadKeys(t) // helper parses PEM files
 
-    vc := vcon.New()
+    vc := vcon.New("example.com")
     vc.Subject = "Test with fixture keys"
 
     signed, err := vc.Sign(leafKey, []*x509.Certificate{leafCert})

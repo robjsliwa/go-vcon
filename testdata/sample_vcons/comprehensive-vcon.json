@@ -1,0 +1,71 @@
+{
+  "vcon": "0.0.3",
+  "uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "created_at": "2023-06-15T14:30:00Z",
+  "updated_at": "2023-06-15T15:45:12Z",
+  "subject": "Technical Support - Network Connectivity Issue",
+  "parties": [
+    {
+      "name": "Bob Johnson",
+      "tel": "+12025551111",
+      "role": "customer"
+    },
+    {
+      "name": "Sarah Lee",
+      "tel": "+18005552222"
+    },
+    {
+      "name": "AI Assistant",
+      "role": "virtual-agent"
+    }
+  ],
+  "dialog": [
+    {
+      "start": "2023-06-15T14:30:00Z",
+      "duration": 500,
+      "mediatype": "audio/mp3",
+      "originator": 0,
+      "parties": [1],
+      "interaction_id": "call-1234",
+      "type": "text",
+      "body": "Bob Johnson calls for technical support regarding a network connectivity issue.",
+      "encoding": "base64"
+    },
+    {
+      "start": "2023-06-15T14:35:30Z",
+      "duration": 500,
+      "mediatype": "text/plain",
+      "originator": 0,
+      "interaction_id": "chat-5678",
+      "type": "text",
+      "body": "Jane Smith responds with a solution for the network issue.",
+      "encoding": "base64",
+      "parties": [1]
+    }
+  ],
+  "analysis": [
+    {
+      "type": "sentiment",
+      "vendor": "AIAnalytics, Inc.",
+      "product": "SentimentAnalyzer v2.1",
+      "body": "eyJjdXN0b21lcl9zZW50aW1lbnQiOiAicG9zaXRpdmUiLCAiYWdlbnRfcGVyZm9ybWFuY2UiOiAiZXhjZWxsZW50In0=",
+      "encoding": "base64"
+
+    },
+    {
+      "type": "transcription",
+      "vendor": "Transcribe Pro",
+      "product": "AutoTranscribe v3.0",
+      "url": "https://example.com/transcripts/call-1234.txt",
+      "content_hash": "sha256:b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3"
+    }
+  ],
+  "attachments": [
+    {
+      "body": "eyJuZXR3b3JrX2xvZ3MiOiAidHJ1bmNhdGVkIGZvciByZWFkYWJpbGl0eSJ9",
+      "encoding": "base64",
+      "party": 0,
+      "start": "2023-06-15T14:30:00Z"
+    }
+  ]
+}

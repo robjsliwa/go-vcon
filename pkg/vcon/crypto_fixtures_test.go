@@ -23,7 +23,7 @@ func loadKeys(t *testing.T) (*rsa.PrivateKey, *x509.Certificate, *x509.CertPool)
 
 	// ---- locate testdata/keys relative to this file ----
 	_, thisFile, _, _ := runtime.Caller(0) // nolint: dogsled
-	keyDir := filepath.Join(filepath.Dir(thisFile), "testdata", "keys")
+	keyDir := filepath.Join(filepath.Dir(thisFile), "../../testdata", "keys")
 
 	readPEM := func(name string) *pem.Block {
 		raw, err := os.ReadFile(filepath.Join(keyDir, name))

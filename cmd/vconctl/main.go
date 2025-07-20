@@ -8,20 +8,41 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
+	"net/http"
+	"net/mail"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/jhillyerd/enmime"
 	"github.com/robjsliwa/go-vcon/pkg/vcon"
 	"github.com/spf13/cobra"
+	ffprobe "github.com/vansante/go-ffprobe"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "vconctl",
 	Short: "vconctl - a tool for working with vCon files",
 	Long:  `vconctl is a command-line utility for validating, signing, encrypting, verifying, and decrypting vCon (Virtual Conversation) files.`,
+}
+
+var (
+	audioInput  string
+	audioParties []string
+	audioDate   string
+	audioOut    string
+	
+	// Global domain flag for UUID generation
+	globalDomain string
+)
+
+var convertCmd = &cobra.Command{
+	Use:   "convert",
+	Short: "Convert external artefacts (audio, Zoom, email) into vCon containers",
 }
 
 func main() {
@@ -33,7 +54,11 @@ func main() {
 }
 
 func init() {
-	rootCmd.AddCommand(validateCmd, signCmd, encryptCmd, verifyCmd, decryptCmd, genkeyCmd)
+	rootCmd.AddCommand(validateCmd, signCmd, encryptCmd, verifyCmd, decryptCmd, genkeyCmd, convertCmd)
+	convertCmd.AddCommand(audioCmd, zoomCmd, emailCmd)
+
+	// Global flags
+	rootCmd.PersistentFlags().StringVar(&globalDomain, "domain", "vcon.example.com", "Domain name for UUID generation")
 
 	// flags
 	signCmd.Flags().StringP("key", "k", "", "Path to private key file (required)")
@@ -50,6 +75,12 @@ func init() {
 
 	genkeyCmd.Flags().StringP("key", "k", "", "Output private-key path (default: test_key.pem)")
 	genkeyCmd.Flags().StringP("cert", "c", "", "Output certificate path (default: test_cert.pem)")
+
+	audioCmd.Flags().StringVar(&audioInput,  "input",  "",  "Path or URL to recording (required)")
+	audioCmd.Flags().StringArrayVar(&audioParties, "party", nil, "Party spec 'name,tel:+1555...' or 'name,mailto:bob@a.b'")
+	audioCmd.Flags().StringVar(&audioDate,   "date",   "",  "Recording start (RFC3339); default file mtime")
+	audioCmd.Flags().StringVarP(&audioOut,   "output", "o", "",  "Output vCon (default: <rec>.json)")
+	audioCmd.MarkFlagRequired("input")
 }
 
 // Command: validate
@@ -426,4 +457,187 @@ func appendPEMToPool(pool *x509.CertPool, pemPath string) bool {
 func die(context string, err error) {
 	fmt.Fprintf(os.Stderr, "❌ %s: %v\n", context, err)
 	os.Exit(1)
+}
+
+// Command: audio
+
+var audioCmd = &cobra.Command{
+	Use:   "audio --input <file|url> --party <spec> [--party <spec> ...] --date <RFC3339>",
+	Short: "Create a vCon from a standalone recording",
+	Args:  cobra.NoArgs,
+	RunE:  runAudio,
+}
+
+func runAudio(cmd *cobra.Command, _ []string) error {
+	path, cleanup, err := fetchIfRemote(audioInput)
+	if err != nil { return err }
+	defer cleanup()
+
+	info, err := ffprobe.GetProbeData(path, 10*time.Second)
+	if err != nil { return fmt.Errorf("ffprobe: %w", err) }
+
+	v := vcon.New(globalDomain)
+	v.Subject   = filepath.Base(path)
+	v.CreatedAt = getDate(audioDate, path)
+
+	for _, spec := range audioParties {
+		p := parseParty(spec)
+		v.Parties = append(v.Parties, *p)
+	}
+
+	dur := time.Duration(float64(time.Second) * info.Format.DurationSeconds)
+	v.Dialog = append(v.Dialog, vcon.Dialog{
+		Type:      "recording",
+		StartTime: &v.CreatedAt,
+		Duration:  dur.Seconds(),
+		Filename:  filepath.Base(path),
+		MediaType: strings.ReplaceAll(info.Format.FormatName, ",", "/"),
+		URL:       audioInput,
+	})
+
+	return writeVconFile(v, audioOut, path)
+}
+
+// Command: zoom
+var zoomCmd = &cobra.Command{
+	Use:   "zoom <folder>",
+	Short: "Generate a vCon from a local Zoom recording folder",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runZoom,
+}
+
+func runZoom(_ *cobra.Command, args []string) error {
+	folder := args[0]
+	meta, err := readZoomMeta(folder)
+	if err != nil { return err }
+
+	v := vcon.New(globalDomain)
+	v.Subject   = meta.Topic
+	v.CreatedAt = meta.Start
+
+	// host
+	v.Parties = append(v.Parties, vcon.Party{ Name: meta.Host, Mailto: meta.HostEmail, Role: "host" })
+	// participants
+	for _, p := range meta.Participants {
+		v.Parties = append(v.Parties, vcon.Party{ Name: p.Name, Mailto: p.Email })
+	}
+
+	// main MP4 and VTT transcript become attachments
+	for _, f := range meta.Files {
+		att := vcon.Attachment{
+			Filename: f.Name,
+			URL:      f.Path,
+			MediaType: f.Type,
+		}
+		v.Attachments = append(v.Attachments, att)
+	}
+
+	return writeVconFile(v, "", folder)
+}
+
+// Command: email
+var emailCmd = &cobra.Command{
+	Use:   "email <file.eml>",
+	Short: "Convert a raw RFC-822 mail into vCon",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runEmail,
+}
+
+func runEmail(_ *cobra.Command, args []string) error {
+	f := args[0]
+	r, err := os.Open(f); if err != nil { return err }
+	defer r.Close()
+
+	env, err := enmime.ReadEnvelope(r)
+	if err != nil { return err }
+
+	v := vcon.New(globalDomain)
+	v.Subject   = env.GetHeader("Subject")
+	dateStr := env.GetHeader("Date")
+	created, err := mail.ParseDate(dateStr)
+	if err != nil {
+		return fmt.Errorf("parsing Date header: %w", err)
+	}
+	v.CreatedAt = created
+
+	parseAndAdd := func(header, role string) error {
+		addrsStr := env.GetHeader(header)
+		addrs, err := mail.ParseAddressList(addrsStr)
+		if err != nil {
+			return fmt.Errorf("parsing %s header: %w", header, err)
+		}
+		for _, a := range addrs {
+			v.Parties = append(v.Parties, vcon.Party{
+				Name:   a.Name,
+				Mailto: "mailto:" + a.Address,
+				Role:   role,
+			})
+		}
+		return nil
+	}
+
+	if err := parseAndAdd("From", "originator"); err != nil {
+		return err
+	}
+	if err := parseAndAdd("To", "recipient"); err != nil {
+		return err
+	}
+	if err := parseAndAdd("Cc", "cc"); err != nil {
+		return err
+	}
+
+	v.Dialog = append(v.Dialog, vcon.Dialog{
+		Type:      "email",
+		StartTime: &v.CreatedAt,
+		Parties:   []int{0}, // index 0 assumed as originator
+		Body:      env.Text,
+		MediaType: "text/plain",
+		MessageID: env.GetHeader("Message-Id"),
+	})
+
+	return writeVconFile(v, "", f)
+}
+
+// helpers
+func fetchIfRemote(src string) (path string, cleanup func(), err error) {
+	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
+		tmp, err := os.CreateTemp("", "vcon-dl-*"+filepath.Ext(src))
+		if err != nil { return "", nil, err }
+		resp, err := http.Get(src); if err != nil { return "", nil, err }
+		defer resp.Body.Close()
+		_, err = io.Copy(tmp, resp.Body); if err != nil { return "", nil, err }
+		tmp.Close()
+		return tmp.Name(), func(){ os.Remove(tmp.Name()) }, nil
+	}
+	return src, func(){}, nil
+}
+
+func parseParty(spec string) *vcon.Party {
+	parts := strings.SplitN(spec, ",", 2)
+	p := &vcon.Party{ Name: parts[0] }
+	if len(parts) == 2 {
+		if strings.HasPrefix(parts[1], "tel:") { p.Tel = parts[1] }
+		if strings.HasPrefix(parts[1], "mailto:") { p.Mailto = parts[1] }
+	}
+	return p
+}
+
+func getDate(flag, path string) time.Time {
+	if flag != "" {
+		if t, err := time.Parse(time.RFC3339, flag); err == nil {
+			return t
+		}
+	}
+	if fi, err := os.Stat(path); err == nil {
+		return fi.ModTime()
+	}
+	return time.Now()
+}
+
+func writeVconFile(v *vcon.VCon, out, src string) error {
+	if out == "" {
+		out = strings.TrimSuffix(src, filepath.Ext(src)) + ".vcon.json"
+	}
+	blob, _ := json.MarshalIndent(v, "", "  ")
+	return os.WriteFile(out, blob, 0644)
 }
