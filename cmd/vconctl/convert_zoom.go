@@ -10,6 +10,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/robjsliwa/go-vcon/pkg/vcon"
+	"github.com/spf13/cobra"
 )
 
 type ZoomMeta struct {
@@ -30,6 +33,43 @@ type ZFile struct {
 	Name string
 	Path string
 	Type string // MIME type e.g. "video/mp4"
+}
+
+// Command: zoom
+var zoomCmd = &cobra.Command{
+	Use:   "zoom <folder>",
+	Short: "Generate a vCon from a local Zoom recording folder",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runZoom,
+}
+
+func runZoom(_ *cobra.Command, args []string) error {
+	folder := args[0]
+	meta, err := readZoomMeta(folder)
+	if err != nil { return err }
+
+	v := vcon.New(globalDomain)
+	v.Subject   = meta.Topic
+	v.CreatedAt = meta.Start
+
+	// host
+	v.Parties = append(v.Parties, vcon.Party{ Name: meta.Host, Mailto: meta.HostEmail, Role: "host" })
+	// participants
+	for _, p := range meta.Participants {
+		v.Parties = append(v.Parties, vcon.Party{ Name: p.Name, Mailto: p.Email })
+	}
+
+	// main MP4 and VTT transcript become attachments
+	for _, f := range meta.Files {
+		att := vcon.Attachment{
+			Filename: f.Name,
+			URL:      f.Path,
+			MediaType: f.Type,
+		}
+		v.Attachments = append(v.Attachments, att)
+	}
+
+	return writeVconFile(v, "", folder)
 }
 
 func readZoomMeta(folder string) (*ZoomMeta, error) {
