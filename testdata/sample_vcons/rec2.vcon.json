@@ -1,8 +1,8 @@
 {
   "vcon": "0.0.3",
-  "uuid": "01982c20-e9d7-83f3-8fc3-cb65d00d338f",
+  "uuid": "01982d6d-537d-80cb-b3a7-9cce5b092fd6",
   "created_at": "2025-07-20T23:20:50.52Z",
-  "subject": "vcon-dl-645871734.wav",
+  "subject": "vcon-dl-2643973115.wav",
   "parties": [
     {
       "tel": "tel:+12151235555",
@@ -18,8 +18,12 @@
       "type": "recording",
       "start": "2025-07-20T23:20:50.52Z",
       "duration": 94.32,
+      "parties": [
+        0,
+        1
+      ],
       "mediatype": "wav",
-      "filename": "vcon-dl-645871734.wav",
+      "filename": "vcon-dl-2643973115.wav",
       "url": "https://raw.githubusercontent.com/robjsliwa/go-vcon/loaders/testdata/sample_vcons/1745501752.21.wav"
     }
   ]

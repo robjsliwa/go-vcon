@@ -190,11 +190,11 @@ Flags:
 
 Example:
 ```bash
-vconctl convert audio --input recording.wav --party "Alice,tel:+12025551234" --party "Bob,tel:+12025555678" --date "2025-07-20T23:20:50.52Z" --domain example.com -o conversation.vcon.json
+vconctl convert audio --input testdata/sample_vcons/1745501752.21.wav --party "Alice,tel:+12025551234" --party "Bob,tel:+12025555678" --date "2025-07-20T23:20:50.52Z" --domain example.com -o testdata/sample_vcons/rec1.vcon.json
 ```
 
 ```bash
-go run ./cmd/vconctl convert audio --input https://raw.githubusercontent.com/robjsliwa/go-vcon/main/testdata/sample_vcons/1745501752.21.wav --party rob,tel:+12151235555 --party alice,tel:+12671235555 --date 2025-07-20T23:20:50.52Z --domain example.com -o testdata/sample_vcons/rec2.vcon.json
+vconctl convert audio --input https://raw.githubusercontent.com/robjsliwa/go-vcon/main/testdata/sample_vcons/1745501752.21.wav --party rob,tel:+12151235555 --party alice,tel:+12671235555 --date 2025-07-20T23:20:50.52Z --domain example.com -o testdata/sample_vcons/rec2.vcon.json
 ```
 
 ##### convert zoom

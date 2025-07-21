@@ -1,0 +1,30 @@
+{
+  "vcon": "0.0.3",
+  "uuid": "01982c73-dd91-8995-bf4c-13fa00380f11",
+  "created_at": "2025-07-21T08:52:58Z",
+  "subject": "[EXTERNAL] Elevated errors with image processing in ChatGPT for paid users",
+  "parties": [
+    {
+      "mailto": "mailto:no-reply@status.incident.io",
+      "name": "OpenAI (via incident.io)",
+      "role": "originator"
+    },
+    {
+      "mailto": "mailto:rsliwa@somos.com",
+      "role": "recipient"
+    }
+  ],
+  "dialog": [
+    {
+      "type": "email",
+      "start": "2025-07-21T08:52:58Z",
+      "parties": [
+        0,
+        1
+      ],
+      "mediatype": "text/plain",
+      "body": "[THIS MESSAGE IS FROM AN EXTERNAL SOURCE REVIEW CAREFULLY]\r\n\r\n------------\r\nNew incident\r\n------------\r\n\r\n***************************************************************\r\nElevated errors with image processing in ChatGPT for paid users\r\n***************************************************************\r\n\r\nIdentified Started July 21, 2025 8:49 AM UTC\r\n\r\nWe have identified that users are experiencing elevated errors for the impacted services.\r\n\r\nWe are working on implementing a mitigation.\r\n\r\nAffected Components:\r\n--------------------\r\n\r\nChatGPT GPT vision Degraded performance\r\nView incident ( https://u24706548.ct.sendgrid.net/ls/click?upn=u001.xYmoMNJiMWxgKfVNXP547EwvJud4Qlcs00wP2X-2BCp8I1YQiwnOAgdEliOu2xkp-2FDdenKNgfuSQkdzYn9YjrRSzPKcYdLLIxPvKjGq4ORFww-3DF-KG_WTMSb1IG7lqFunPQQaudQtd8jItAPzjRVzwkdNh5TF4FX6jczGlYEfjDzjwsVnNHjxzlxDIEoLQ61LN800Jvc9b-2BjDMDd3aJnxt2F95rN2ks-2FXI4TPZpjlcH68NnvgG7lRwOXLepnUJ0mpGz-2Bgpca43Fok35PEhYElRTdKODNnD8Yx0rFKyG-2Frx4JjLrGmCVHuX2fIrGEv4Cp-2BWMhoRdTLa0XZ4BUcAHY4x0CRSbZXBKQxOxfazcBSGXipIFMg9D-2BblW-2B4u7Pp9nuZ7jDF-2BvoDAHtj1UG13JT74oFo271qyN8zmKIhyRB41ILhV8B3encscRx0ZY2R0Fwii5nIYDJUsOSjWbo37mlphjR7RBtQ5GBwDPbNe6gkek0kWcJipDwXlg4GVHhDX0ZlKXAVtThyi0Vks5q-2FeSog2FzRHkn48-3D )\r\n\r\nUnsubscribe ( https://u24706548.ct.sendgrid.net/ls/click?upn=u001.xYmoMNJiMWxgKfVNXP547EwvJud4Qlcs00wP2X-2BCp8J-2BmERAarWVG3pf92Y1CaXO-2Bz5HylTXzfbwDkWvZzFGfnPExVJD-2FevP1ZcYBePSJZEBlKkS7-2FmiQl62-2BKGVbRp6Vrnd_WTMSb1IG7lqFunPQQaudQtd8jItAPzjRVzwkdNh5TF4FX6jczGlYEfjDzjwsVnNHjxzlxDIEoLQ61LN800Jvc9b-2BjDMDd3aJnxt2F95rN2ks-2FXI4TPZpjlcH68NnvgG7lRwOXLepnUJ0mpGz-2Bgpca43Fok35PEhYElRTdKODNnD8Yx0rFKyG-2Frx4JjLrGmCVHuX2fIrGEv4Cp-2BWMhoRdTLa0XZ4BUcAHY4x0CRSbZXBKQxOxfazcBSGXipIFMg9D-2BblW-2B4u7Pp9nuZ7jDF-2BvoGWtOlHxG0t9vWDNCgp-2FXa7m0KhAtPM7hrD4nJwBjpQ8zLrq8U9BsSNUmFzRVxYfh3vOPYGGXH6HIH2AUdCI7OjklxReV-2FgYtluedv4X9iMy29Vqxc4mkLx7CS1QoGhk1qWNUxN-2BsiITDHdhugKUgh0-3D )\r\n",
+      "message_id": "\u003cErgEFw7dQ8yywsKVdLLstA@geopod-ismtpd-12\u003e"
+    }
+  ]
+}

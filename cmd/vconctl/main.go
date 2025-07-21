@@ -34,7 +34,7 @@ var (
 	audioInput  string
 	audioParties []string
 	audioDate   string
-	audioOut    string
+	vConOut     string
 	
 	// Global domain flag for UUID generation
 	globalDomain string
@@ -79,8 +79,10 @@ func init() {
 	audioCmd.Flags().StringVar(&audioInput,  "input",  "",  "Path or URL to recording (required)")
 	audioCmd.Flags().StringArrayVar(&audioParties, "party", nil, "Party spec 'name,tel:+1555...' or 'name,mailto:bob@a.b'")
 	audioCmd.Flags().StringVar(&audioDate,   "date",   "",  "Recording start (RFC3339); default file mtime")
-	audioCmd.Flags().StringVarP(&audioOut,   "output", "o", "",  "Output vCon (default: <rec>.json)")
+	audioCmd.Flags().StringVarP(&vConOut,   "output", "o", "",  "Output vCon (default: <rec>.json)")
 	audioCmd.MarkFlagRequired("input")
+
+	emailCmd.Flags().StringVarP(&vConOut,   "output", "o", "",  "Output vCon (default: <file>.json)")
 }
 
 // Command: validate
@@ -480,9 +482,12 @@ func runAudio(cmd *cobra.Command, _ []string) error {
 	v.Subject   = filepath.Base(path)
 	v.CreatedAt = getDate(audioDate, path)
 
+	var dialogParties []int
+
 	for _, spec := range audioParties {
 		p := parseParty(spec)
 		v.Parties = append(v.Parties, *p)
+		dialogParties = append(dialogParties, len(v.Parties)-1)
 	}
 
 	dur := time.Duration(float64(time.Second) * info.Format.DurationSeconds)
@@ -490,12 +495,13 @@ func runAudio(cmd *cobra.Command, _ []string) error {
 		Type:      "recording",
 		StartTime: &v.CreatedAt,
 		Duration:  dur.Seconds(),
+		Parties:   dialogParties,
 		Filename:  filepath.Base(path),
 		MediaType: strings.ReplaceAll(info.Format.FormatName, ",", "/"),
 		URL:       audioInput,
 	})
 
-	return writeVconFile(v, audioOut, path)
+	return writeVconFile(v, vConOut, path)
 }
 
 // Command: zoom
@@ -560,8 +566,11 @@ func runEmail(_ *cobra.Command, args []string) error {
 	}
 	v.CreatedAt = created
 
+	var dialogParties []int
+
 	parseAndAdd := func(header, role string) error {
 		addrsStr := env.GetHeader(header)
+		if addrsStr == "" && header == "Cc" { return nil }
 		addrs, err := mail.ParseAddressList(addrsStr)
 		if err != nil {
 			return fmt.Errorf("parsing %s header: %w", header, err)
@@ -572,6 +581,7 @@ func runEmail(_ *cobra.Command, args []string) error {
 				Mailto: "mailto:" + a.Address,
 				Role:   role,
 			})
+			dialogParties = append(dialogParties, len(v.Parties)-1)
 		}
 		return nil
 	}
@@ -589,13 +599,13 @@ func runEmail(_ *cobra.Command, args []string) error {
 	v.Dialog = append(v.Dialog, vcon.Dialog{
 		Type:      "email",
 		StartTime: &v.CreatedAt,
-		Parties:   []int{0}, // index 0 assumed as originator
+		Parties:   dialogParties,
 		Body:      env.Text,
 		MediaType: "text/plain",
 		MessageID: env.GetHeader("Message-Id"),
 	})
 
-	return writeVconFile(v, "", f)
+	return writeVconFile(v, vConOut, f)
 }
 
 // helpers
