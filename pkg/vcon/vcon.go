@@ -155,7 +155,7 @@ func ProcessProperties(obj map[string]interface{}, allowedProps map[string]struc
 }
 
 // New creates an empty, valid container with property handling options.
-func New(propertyHandling ...string) *VCon {
+func New(domain string, propertyHandling ...string) *VCon {
 	handling := PropertyHandlingDefault
 	if len(propertyHandling) > 0 {
 		handling = propertyHandling[0]
@@ -163,7 +163,7 @@ func New(propertyHandling ...string) *VCon {
 
 	vcon := &VCon{
 		Vcon:             SpecVersion,
-		UUID:             UUID8DomainName("strolid.com"),
+		UUID:             UUID8DomainName(domain),
 		CreatedAt:        time.Now().UTC(),
 		Parties:          []Party{},
 		Dialog:           []Dialog{},

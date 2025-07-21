@@ -1,0 +1,30 @@
+{
+  "vcon": "0.0.3",
+  "uuid": "01982d6c-5a0b-815f-a902-4fdbe644b582",
+  "created_at": "2025-07-20T23:20:50.52Z",
+  "subject": "1745501752.21.wav",
+  "parties": [
+    {
+      "tel": "tel:+12025551234",
+      "name": "Alice"
+    },
+    {
+      "tel": "tel:+12025555678",
+      "name": "Bob"
+    }
+  ],
+  "dialog": [
+    {
+      "type": "recording",
+      "start": "2025-07-20T23:20:50.52Z",
+      "duration": 94.32,
+      "parties": [
+        0,
+        1
+      ],
+      "mediatype": "wav",
+      "filename": "1745501752.21.wav",
+      "url": "testdata/sample_vcons/1745501752.21.wav"
+    }
+  ]
+}

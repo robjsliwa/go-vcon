@@ -1,0 +1,22 @@
+{
+  "vcon": "0.0.3",
+  "created_at": "2025-06-01T15:30:00Z",
+  "uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "parties": [
+    { "tel": "+12135551111", "name": "Alice" },
+    { "tel": "+16175552222", "name": "Bob" }
+  ],
+  "dialog": [
+    {
+      "type": "recording",
+      "originator": 0,
+      "start": "2025-06-01T15:30:00Z",
+      "duration": 85.3,
+      "parties": [0, 1],
+      "mediatype": "audio/x-wav",
+      "filename": "call_20250601.wav",
+      "url": "https://example.com/records/2025/06/call_123.wav",
+      "content_hash": "sha512-abcdef1234567890..." 
+    }
+  ]
+}
