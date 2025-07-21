@@ -76,8 +76,8 @@ import (
 )
 
 func main() {
-	// Create a new vCon
-	v := vcon.New()
+	// Create a new vCon with domain for UUID generation
+	v := vcon.New("example.com")
 	
 	// Set basic properties
 	v.Subject = "Sample conversation"
@@ -114,6 +114,7 @@ Usage:
   vconctl [command]
 
 Available Commands:
+  convert     Convert external artifacts (audio, zoom, email) into vCon containers
   decrypt     Decrypt an encrypted vCon file
   encrypt     Encrypt a signed vCon for one recipient
   genkey      Generate a test RSA key pair and self-signed certificate
@@ -171,6 +172,59 @@ vconctl decrypt [file] [flags]
 Flags:
 - `--key, -k`: Path to private key file (required)
 - `--output, -o`: Path to output file (defaults to `<file>.decrypted.json`)
+
+#### convert
+
+The convert command allows you to create vCon files from various external sources:
+
+##### convert audio
+```bash
+vconctl convert audio --input <file|url> --party <spec> [--party <spec> ...] [flags]
+```
+Flags:
+- `--input`: Path or URL to recording file (required)
+- `--party`: Party specification in format 'name,tel:+1555...' or 'name,mailto:user@domain'
+- `--date`: Recording start time in RFC3339 format (default: file modification time)
+- `--output, -o`: Output vCon file path (default: `<input_name>.vcon.json`)
+- `--domain`: Domain name for UUID generation (default: vcon.example.com)
+
+Example:
+```bash
+vconctl convert audio --input recording.wav --party "Alice,tel:+12025551234" --party "Bob,tel:+12025555678" --date "2025-07-20T23:20:50.52Z" --domain example.com -o conversation.vcon.json
+```
+
+```bash
+go run ./cmd/vconctl convert audio --input https://raw.githubusercontent.com/robjsliwa/go-vcon/main/testdata/sample_vcons/1745501752.21.wav --party rob,tel:+12151235555 --party alice,tel:+12671235555 --date 2025-07-20T23:20:50.52Z --domain example.com -o testdata/sample_vcons/rec2.vcon.json
+```
+
+##### convert zoom
+```bash
+vconctl convert zoom <folder>
+```
+Converts a Zoom recording folder into a vCon file. The folder should contain Zoom recording files and metadata.
+
+Example:
+```bash
+vconctl convert zoom ./zoom_meeting_folder
+```
+
+##### convert email
+```bash
+vconctl convert email <file.eml>
+```
+Converts an RFC-822 email message file into a vCon file.
+
+Example:
+```bash
+vconctl convert email message.eml
+```
+
+#### Global Flags
+
+All commands support these global flags:
+- `--domain string`: Domain name for UUID generation (default "vcon.example.com")
+
+### Command Examples
 
 #### Validate a vCon
 
@@ -494,6 +548,15 @@ vconctl encrypt simple-vcon.signed.json --cert test_cert.pem
 
 # Decrypt (requires private key)
 vconctl decrypt simple-vcon.signed.encrypted.json --key test_key.pem
+
+# Convert audio file to vCon
+vconctl convert audio --input recording.wav --party "Speaker 1,tel:+12025551234" --party "Speaker 2,tel:+12025555678"
+
+# Convert Zoom recording to vCon
+vconctl convert zoom ./zoom_recording_folder
+
+# Convert email to vCon
+vconctl convert email message.eml
 ```
 
 ### Complete Workflow Example
@@ -524,6 +587,16 @@ vconctl decrypt simple-vcon.signed.encrypted.json --key test_key.pem
 
 # 7. Verify the decrypted content (optional)
 vconctl verify simple-vcon.signed.encrypted.decrypted.json --cert test_cert.pem
+
+# 8. Convert external sources to vCon (optional examples)
+# Convert audio file
+vconctl convert audio --input meeting.wav --party "John,tel:+12025551111" --party "Jane,tel:+12025552222" --date "2025-07-20T14:30:00Z"
+
+# Convert Zoom recording
+vconctl convert zoom ./zoom_meeting_20250720
+
+# Convert email
+vconctl convert email important_conversation.eml
 ```
 
 ### Differences from Python Reference Implementation
@@ -540,17 +613,22 @@ While this Go implementation follows the same core vCon specification as the Pyt
 - **Simpler command structure**: Go version uses direct commands (`vconctl sign file.json`) vs Python's more complex argument structure
 - **Flag-based options**: Go version uses `--key`, `--cert`, `--output` flags instead of positional arguments
 - **Automatic output naming**: Go version automatically generates output filenames (e.g., `file.signed.json`) unless specified
-- **Focused scope**: Go version focuses on core vCon operations, while Python version includes additional features like Zoom/Meet integration and filtering plugins
+- **Convert commands**: Go version includes `convert` subcommands for audio, Zoom, and email import
 - **Built-in key generation**: Go version includes `genkey` command for easy test key/certificate generation
 
+**Implemented Features (from Python reference):**
+- Core vCon operations (validate, sign, verify, encrypt, decrypt)
+- Audio file conversion (`convert audio`)
+- Zoom meeting import (`convert zoom`) 
+- Email message import (`convert email`)
+- Domain-based UUID generation
+
 **Missing Features (compared to Python):**
-- Zoom meeting import (`add in-zoom`)
-- Google Meet import (`add in-meet`) 
-- Email message import (`add in-email`)
 - Filter plugins system
-- HTTP GET/POST operations
-- Recording file processing
+- HTTP GET/POST operations for remote vCon retrieval/storage
 - Advanced analysis features
+- Google Meet import functionality
+- Comprehensive recording file processing
 
 The Go implementation is designed to be a clean, focused tool for core vCon operations, while the Python implementation provides a more comprehensive toolkit for various vCon workflows.
 

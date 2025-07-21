@@ -1,0 +1,26 @@
+{
+  "vcon": "0.0.3",
+  "uuid": "01982c20-e9d7-83f3-8fc3-cb65d00d338f",
+  "created_at": "2025-07-20T23:20:50.52Z",
+  "subject": "vcon-dl-645871734.wav",
+  "parties": [
+    {
+      "tel": "tel:+12151235555",
+      "name": "rob"
+    },
+    {
+      "tel": "tel:+12671235555",
+      "name": "alice"
+    }
+  ],
+  "dialog": [
+    {
+      "type": "recording",
+      "start": "2025-07-20T23:20:50.52Z",
+      "duration": 94.32,
+      "mediatype": "wav",
+      "filename": "vcon-dl-645871734.wav",
+      "url": "https://raw.githubusercontent.com/robjsliwa/go-vcon/loaders/testdata/sample_vcons/1745501752.21.wav"
+    }
+  ]
+}

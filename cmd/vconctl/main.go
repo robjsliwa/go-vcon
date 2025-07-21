@@ -601,12 +601,28 @@ func runEmail(_ *cobra.Command, args []string) error {
 // helpers
 func fetchIfRemote(src string) (path string, cleanup func(), err error) {
 	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
+		downloadURL := src
+		
 		tmp, err := os.CreateTemp("", "vcon-dl-*"+filepath.Ext(src))
 		if err != nil { return "", nil, err }
-		resp, err := http.Get(src); if err != nil { return "", nil, err }
+		
+		resp, err := http.Get(downloadURL)
+		if err != nil { return "", nil, err }
 		defer resp.Body.Close()
-		_, err = io.Copy(tmp, resp.Body); if err != nil { return "", nil, err }
+		
+		if resp.StatusCode != http.StatusOK {
+			return "", nil, fmt.Errorf("failed to download file: HTTP %d", resp.StatusCode)
+		}
+		
+		_, err = io.Copy(tmp, resp.Body)
+		if err != nil { return "", nil, err }
 		tmp.Close()
+		
+		// Verify the file was downloaded correctly by checking its size
+		if stat, err := os.Stat(tmp.Name()); err == nil {
+			fmt.Printf("Downloaded %d bytes to %s\n", stat.Size(), tmp.Name())
+		}
+		
 		return tmp.Name(), func(){ os.Remove(tmp.Name()) }, nil
 	}
 	return src, func(){}, nil
