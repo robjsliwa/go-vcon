@@ -2,13 +2,25 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
 )
 
+// checkFFProbeAvailable checks if ffprobe is available in the system
+func checkFFProbeAvailable() bool {
+	_, err := exec.LookPath("ffprobe")
+	return err == nil
+}
+
 func TestRunAudio(t *testing.T) {
+	// Skip test if ffprobe is not available
+	if !checkFFProbeAvailable() {
+		t.Skip("ffprobe not available in PATH - skipping audio conversion tests")
+	}
+	
 	// Reset global variables for testing
 	originalGlobalDomain := globalDomain
 	originalAudioInput := audioInput
@@ -111,6 +123,10 @@ func TestRunAudio(t *testing.T) {
 func TestRunAudioIntegration(t *testing.T) {
 	// This test requires ffprobe to be available
 	// Skip if ffprobe is not available in the system
+	if !checkFFProbeAvailable() {
+		t.Skip("ffprobe not available, skipping integration test")
+	}
+
 	testAudioPath := "../../testdata/sample_vcons/1745501752.21.wav"
 	absTestAudioPath, err := filepath.Abs(testAudioPath)
 	if err != nil {
@@ -181,6 +197,34 @@ func TestRunAudioIntegration(t *testing.T) {
 			t.Errorf("output file does not contain expected string: %s", expected)
 		}
 	}
+}
+
+func TestRunAudioWithoutFFProbe(t *testing.T) {
+	// Create a temporary test that simulates missing ffprobe
+	// by overriding the checkFFProbeAvailable function behavior
+	
+	// Save original function (we can't actually override it easily in Go, 
+	// so we'll just test that the logic would work)
+	
+	// Test what would happen if ffprobe was not available
+	// This simulates the GitHub Actions environment
+	
+	// Create a function that simulates ffprobe not being available
+	oldPath := os.Getenv("PATH")
+	defer func() {
+		os.Setenv("PATH", oldPath)
+	}()
+	
+	// Set PATH to a directory that doesn't contain ffprobe
+	tempDir := t.TempDir()
+	os.Setenv("PATH", tempDir)
+	
+	// Now test that checkFFProbeAvailable returns false
+	if checkFFProbeAvailable() {
+		t.Error("Expected checkFFProbeAvailable to return false with empty PATH")
+	}
+	
+	t.Log("Successfully verified that checkFFProbeAvailable returns false when ffprobe is not in PATH")
 }
 
 func contains(s, substr string) bool {
