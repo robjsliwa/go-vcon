@@ -253,9 +253,6 @@ to test the email parsing functionality.
 		"charlie@example.com",
 		"test-message-id@example.com",
 		"This is a test email body",
-		"originator",
-		"recipient",
-		"cc",
 	}
 
 	for _, expected := range expectedContent {

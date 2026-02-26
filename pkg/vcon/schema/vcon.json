@@ -1,19 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/vcon.schema.json",
-  "title": "vCon JSON Container (draft-ietf-vcon-vcon-container-03)",
+  "$id": "https://ietf.org/vcon/schemas/unsigned-vcon.json",
+  "title": "vCon JSON Container (draft-ietf-vcon-vcon-core-02)",
   "type": "object",
   "required": [
-    "vcon",
     "uuid",
-    "created_at"
+    "created_at",
+    "parties"
   ],
-  "additionalProperties": false,
   "properties": {
     "vcon": {
       "type": "string",
-      "const": "0.0.3",
-      "description": "Version identifier for this vCon draft"
+      "const": "0.4.0",
+      "description": "Deprecated version identifier for this vCon draft"
     },
     "uuid": {
       "type": "string",
@@ -30,14 +29,59 @@
     "subject": {
       "type": "string"
     },
-    "group": {
-      "type": ["string", "object", "array"]
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extension name tokens used in this vCon"
+    },
+    "critical": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Incompatible extension tokens that MUST be understood"
     },
     "redacted": {
-      "type": ["boolean", "object", "array"]
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "type": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/content_hash_value"
+        }
+      },
+      "required": ["uuid", "type"]
     },
-    "appended": {
-      "type": "boolean"
+    "amended": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/content_hash_value"
+        }
+      }
+    },
+    "group": {
+      "type": "array",
+      "items": {}
     },
     "parties": {
       "type": "array",
@@ -62,56 +106,36 @@
       "items": {
         "$ref": "#/$defs/attachment"
       }
-    },
-    "meta": {
-      "type": ["object", "array", "string"]
     }
   },
   "$defs": {
-    "fileref": {
-      "type": "object",
-      "description": "Inline or external reference to binary/text content",
-      "properties": {
-        "body": {
-          "type": "string"
-        },
-        "encoding": {
-          "type": "string",
-          "enum": [
-            "base64",
-            "base64url",
-            "json",
-            "none"
-          ]
-        },
-        "url": {
-          "type": "string",
-          "format": "uri"
-        },
-        "content_hash": {
-          "type": "string"
-        },
-        "alg": {
-          "type": "string",
-          "description": "Hash algorithm (e.g., sha256)"
-        },
-        "signature": {
-          "type": "string",
-          "description": "Hash signature (base64url encoded)"
-        }
-      },
+    "content_hash_value": {
+      "description": "Content hash in format 'algorithm-base64url_hash' — single string or array",
       "oneOf": [
         {
-          "required": [
-            "body",
-            "encoding"
-          ]
+          "type": "string"
         },
         {
-          "required": [
-            "url",
-            "content_hash"
-          ]
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "int_or_array": {
+      "description": "Single integer or array of integers",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       ]
     },
@@ -127,6 +151,12 @@
         "mailto": {
           "type": "string"
         },
+        "sip": {
+          "type": "string"
+        },
+        "did": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -139,24 +169,11 @@
         "civicaddress": {
           "$ref": "#/$defs/civicaddress"
         },
-        "timezone": {
-          "type": "string"
-        },
         "uuid": {
           "type": "string",
-          "format": "uuid" 
-        },
-        "role": {
-          "type": "string"
-        },
-        "contact_list": {
-          "type": "string"
-        },
-        "meta": {
-          "type": "object"
+          "format": "uuid"
         }
-      },
-      "additionalProperties": false
+      }
     },
     "civicaddress": {
       "type": "object",
@@ -178,15 +195,13 @@
         "flr": { "type": "string" },
         "nam": { "type": "string" },
         "pc": { "type": "string" }
-      },
-      "additionalProperties": false
+      }
     },
     "dialog": {
       "type": "object",
       "properties": {
         "type": {
-          "type": "string",
-          "enum": ["recording", "text", "transfer", "incomplete"]
+          "type": "string"
         },
         "start": {
           "type": "string",
@@ -199,8 +214,8 @@
         "parties": {
           "anyOf": [
             { "type": "integer", "minimum": 0 },
-            { 
-              "type": "array", 
+            {
+              "type": "array",
               "items": {
                 "type": "integer",
                 "minimum": 0
@@ -211,8 +226,8 @@
               "items": {
                 "oneOf": [
                   { "type": "integer", "minimum": 0 },
-                  { 
-                    "type": "array", 
+                  {
+                    "type": "array",
                     "items": {
                       "type": "integer",
                       "minimum": 0
@@ -228,23 +243,7 @@
           "minimum": 0
         },
         "mediatype": {
-          "type": "string",
-          "examples": [
-            "text/plain", 
-            "audio/x-wav", 
-            "audio/wav",
-            "audio/wave",
-            "audio/mpeg",
-            "audio/mp3",
-            "audio/ogg",
-            "audio/webm",
-            "audio/x-m4a",
-            "audio/aac",
-            "video/x-mp4",
-            "video/ogg",
-            "multipart/mixed",
-            "message/rfc822"
-          ]
+          "type": "string"
         },
         "filename": {
           "type": "string"
@@ -254,31 +253,23 @@
         },
         "encoding": {
           "type": "string",
-          "enum": ["base64", "base64url", "json", "none"]
+          "enum": ["base64url", "json", "none"]
         },
         "url": {
           "type": "string",
           "format": "uri"
         },
         "content_hash": {
-          "type": "string"
-        },
-        "alg": {
-          "type": "string",
-          "description": "Hash algorithm (e.g., sha256)"
-        },
-        "signature": {
-          "type": "string",
-          "description": "Hash signature (base64url encoded)"
+          "$ref": "#/$defs/content_hash_value"
         },
         "disposition": {
           "type": "string",
           "enum": [
-            "no-answer", 
-            "congestion", 
-            "failed", 
-            "busy", 
-            "hung-up", 
+            "no-answer",
+            "congestion",
+            "failed",
+            "busy",
+            "hung-up",
             "voicemail-no-message"
           ]
         },
@@ -287,6 +278,15 @@
           "items": {
             "$ref": "#/$defs/party_history"
           }
+        },
+        "session_id": {
+          "oneOf": [
+            { "$ref": "#/$defs/session_id" },
+            {
+              "type": "array",
+              "items": { "$ref": "#/$defs/session_id" }
+            }
+          ]
         },
         "transferee": {
           "type": "integer",
@@ -297,90 +297,28 @@
           "minimum": 0
         },
         "transfer_target": {
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/$defs/int_or_array"
         },
         "original": {
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/$defs/int_or_array"
         },
         "consultation": {
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/$defs/int_or_array"
         },
         "target_dialog": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "campaign": {
-          "type": "string"
-        },
-        "interaction_type": {
-          "type": "string"
-        },
-        "interaction_id": {
-          "type": "string"
-        },
-        "skill": {
-          "type": "string"
+          "$ref": "#/$defs/int_or_array"
         },
         "application": {
           "type": "string"
         },
         "message_id": {
           "type": "string"
-        },
-        "meta": {
-          "type": "object"
         }
       },
       "required": [
         "type",
         "start"
-      ],
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "type": {"enum": ["recording", "text"]}
-            },
-            "required": ["type"]
-          },
-          "then": {
-            "anyOf": [
-              {
-                "required": ["body", "encoding", "parties"]
-              },
-              {
-                "required": ["url", "content_hash", "parties"]
-              }
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "type": {"const": "incomplete"}
-            },
-            "required": ["type"]
-          },
-          "then": {
-            "required": ["disposition"]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "type": {"const": "transfer"}
-            },
-            "required": ["type"]
-          },
-          "then": {
-            "required": ["transferee", "transferor", "transfer_target", "original", "target_dialog"]
-          }
-        }
-      ],
-      "additionalProperties": false
+      ]
     },
     "party_history": {
       "type": "object",
@@ -391,19 +329,30 @@
         },
         "event": {
           "type": "string",
-          "enum": ["join", "drop", "hold", "unhold", "mute", "unmute"]
+          "enum": ["join", "drop", "hold", "unhold", "mute", "unmute", "keydown", "keyup"]
         },
         "time": {
           "type": "string",
           "format": "date-time"
+        },
+        "button": {
+          "type": "string",
+          "description": "Required for keydown/keyup events"
         }
       },
       "required": [
         "party",
         "event",
         "time"
-      ],
-      "additionalProperties": false
+      ]
+    },
+    "session_id": {
+      "type": "object",
+      "properties": {
+        "local": { "type": "string" },
+        "remote": { "type": "string" }
+      },
+      "required": ["local", "remote"]
     },
     "analysis": {
       "type": "object",
@@ -437,62 +386,63 @@
         },
         "encoding": {
           "type": "string",
-          "enum": ["base64", "base64url", "json", "none"]
+          "enum": ["base64url", "json", "none"]
         },
         "url": {
           "type": "string",
           "format": "uri"
         },
         "content_hash": {
-          "type": "string"
-        },
-        "meta": {
-          "type": ["object", "array", "string"]
+          "$ref": "#/$defs/content_hash_value"
         }
       },
       "required": [
         "type"
-      ],
-      "additionalProperties": false
+      ]
     },
     "attachment": {
       "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/$defs/fileref"
+      "properties": {
+        "body": {
+          "type": "string"
         },
-        {
-          "type": "object",
-          "properties": {
-            "dialog": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "party": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "start": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "mediatype": {
-              "type": "string"
-            },
-            "filename": {
-              "type": "string"
-            },
-            "meta": {
-              "type": ["object", "array", "string"]
-            }
-          },
-          "required": [
-            "start", 
-            "party"
-          ]
+        "encoding": {
+          "type": "string",
+          "enum": ["base64url", "json", "none"]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/content_hash_value"
+        },
+        "dialog": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "party": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "mediatype": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
         }
-      ],
-      "unevaluatedProperties": false
+      },
+      "required": [
+        "start",
+        "party"
+      ]
     }
   }
 }

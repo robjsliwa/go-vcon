@@ -35,7 +35,10 @@ func (v *VCon) Sign(signer crypto.Signer, chain []*x509.Certificate) (*SignedVCo
 	}
 
 	j, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.RS256, Key: signer},
-		(&jose.SignerOptions{}).WithHeader("x5c", x5c).WithHeader("uuid", v.UUID))
+		(&jose.SignerOptions{}).
+			WithContentType("application/vcon").
+			WithHeader("x5c", x5c).
+			WithHeader("uuid", v.UUID))
 	if err != nil { return nil, err }
 	obj, err := j.Sign(payload)
 	if err != nil { return nil, err }
@@ -132,7 +135,7 @@ func (sv *SignedVCon) Encrypt(rcpts []jose.Recipient) (*EncryptedVCon, error) {
 	opts := (&jose.EncrypterOptions{}).
 		// typ & cty aren’t strictly required but useful for tooling
 		WithType("vcon+jwe").
-		WithContentType("application/vcon+json").
+		WithContentType("application/vcon").
 		WithHeader("uuid", tmp.UUID)
 
 	enc, err := jose.NewMultiEncrypter(jose.A256CBC_HS512, rcpts, opts)
@@ -151,7 +154,7 @@ func (sv *SignedVCon) Encrypt(rcpts []jose.Recipient) (*EncryptedVCon, error) {
 	}
 	jweMap["unprotected"] = map[string]any{
 		"uuid": tmp.UUID,
-		"cty":  "application/vcon+json",
+		"cty":  "application/vcon",
 		"enc":  string(jose.A256CBC_HS512),
 	}
 

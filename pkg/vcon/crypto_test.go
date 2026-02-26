@@ -163,9 +163,8 @@ func TestCompleteRoundTrip(t *testing.T) {
 	partyIdx := original.AddParty(vcon.Party{
 		Name: "Alice Smith",
 		Tel:  "tel:+12025551234",
-		Role: "customer",
 	})
-	
+
 	// Add some dialog to make it more realistic
 	now := time.Now().UTC()
 	original.AddDialog(vcon.Dialog{
@@ -175,8 +174,8 @@ func TestCompleteRoundTrip(t *testing.T) {
 		Parties:    []int{partyIdx},
 		Originator: partyIdx,
 		MediaType:  "audio/wav",
-		Body:       "base64encodedaudiodata...",
-		Encoding:   "base64",
+		Body:       "base64urlencodedaudiodata",
+		Encoding:   "base64url",
 	})
 
 	// Validate original
@@ -220,7 +219,6 @@ func TestCompleteRoundTrip(t *testing.T) {
 	// Check party details
 	assert.Equal(t, original.Parties[0].Name, finalVCon.Parties[0].Name, "Party name should match")
 	assert.Equal(t, original.Parties[0].Tel, finalVCon.Parties[0].Tel, "Party tel should match")
-	assert.Equal(t, original.Parties[0].Role, finalVCon.Parties[0].Role, "Party role should match")
 	
 	// Check dialog details
 	assert.Equal(t, original.Dialog[0].Type, finalVCon.Dialog[0].Type, "Dialog type should match")

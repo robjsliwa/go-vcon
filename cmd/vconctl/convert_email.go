@@ -41,7 +41,7 @@ func runEmail(_ *cobra.Command, args []string) error {
 
 	var dialogParties []int
 
-	parseAndAdd := func(header, role string) error {
+	parseAndAdd := func(header string) error {
 		addrsStr := env.GetHeader(header)
 		if addrsStr == "" && header == "Cc" { return nil }
 		addrs, err := mail.ParseAddressList(addrsStr)
@@ -52,20 +52,19 @@ func runEmail(_ *cobra.Command, args []string) error {
 			v.Parties = append(v.Parties, vcon.Party{
 				Name:   a.Name,
 				Mailto: "mailto:" + a.Address,
-				Role:   role,
 			})
 			dialogParties = append(dialogParties, len(v.Parties)-1)
 		}
 		return nil
 	}
 
-	if err := parseAndAdd("From", "originator"); err != nil {
+	if err := parseAndAdd("From"); err != nil {
 		return err
 	}
-	if err := parseAndAdd("To", "recipient"); err != nil {
+	if err := parseAndAdd("To"); err != nil {
 		return err
 	}
-	if err := parseAndAdd("Cc", "cc"); err != nil {
+	if err := parseAndAdd("Cc"); err != nil {
 		return err
 	}
 

@@ -32,10 +32,10 @@ func TestRoundTrip(t *testing.T) {
         Originator: 0,
         Type: "text",
         MediaType: "audio/wav",
-        ContentHash: "test-hash",
+        ContentHash: vcon.ContentHashList{{Algorithm: "sha512", Hash: "test-hash"}},
         Body: "Hello Alice!",
         Parties: 1,
-        Encoding: "base64",
+        Encoding: "base64url",
     })
 
 	// Test the JSON marshaling and unmarshaling
@@ -76,10 +76,10 @@ func TestAddDialog(t *testing.T) {
 	
 	now := time.Now().UTC()
 	idx := v.AddDialog(vcon.Dialog{
-		StartTime: &now, 
+		StartTime: &now,
 		Duration: (5 * time.Second).Seconds(),
 		MediaType: "audio/wav",
-		ContentHash: "test-hash",
+		ContentHash: vcon.ContentHashList{{Algorithm: "sha512", Hash: "test-hash"}},
 	})
 	
 	assert.Equal(t, 0, idx)
@@ -94,7 +94,7 @@ func TestAddAnalysis(t *testing.T) {
 		Type: "transcript",
 		Vendor: "test-vendor",
 		Product: "test-product",
-		ContentHash: "test-content",
+		ContentHash: vcon.ContentHashList{{Algorithm: "sha512", Hash: "test-content"}},
 	})
 	
 	assert.Equal(t, 0, idx)

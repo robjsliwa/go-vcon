@@ -42,7 +42,7 @@ func main() {
 }
 
 func init() {
-	rootCmd.AddCommand(validateCmd, signCmd, encryptCmd, verifyCmd, decryptCmd, genkeyCmd, convertCmd)
+	rootCmd.AddCommand(validateCmd, signCmd, encryptCmd, verifyCmd, decryptCmd, genkeyCmd, convertCmd, detectCmd)
 	convertCmd.AddCommand(audioCmd, zoomCmd, emailCmd)
 
 	// Global flags
@@ -82,8 +82,17 @@ func parseParty(spec string) *vcon.Party {
 	parts := strings.SplitN(spec, ",", 2)
 	p := &vcon.Party{ Name: parts[0] }
 	if len(parts) == 2 {
-		if strings.HasPrefix(parts[1], "tel:") { p.Tel = parts[1] }
-		if strings.HasPrefix(parts[1], "mailto:") { p.Mailto = parts[1] }
+		addr := parts[1]
+		switch {
+		case strings.HasPrefix(addr, "tel:"):
+			p.Tel = addr
+		case strings.HasPrefix(addr, "mailto:"):
+			p.Mailto = addr
+		case strings.HasPrefix(addr, "sip:"):
+			p.Sip = addr
+		case strings.HasPrefix(addr, "did:"):
+			p.Did = addr
+		}
 	}
 	return p
 }

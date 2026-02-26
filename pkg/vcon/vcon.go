@@ -19,7 +19,7 @@ import (
 var vconSchema []byte
 
 // SpecVersion is the draft version this library targets.
-const SpecVersion = "0.0.3"
+const SpecVersion = "0.4.0"
 
 // Property handling modes
 const (
@@ -32,35 +32,35 @@ const (
 var (
 	AllowedVConProperties = map[string]struct{}{
 		"vcon": {}, "uuid": {}, "created_at": {}, "updated_at": {}, "subject": {},
-		"group": {}, "redacted": {}, "appended": {}, "parties": {},
-		"dialog": {}, "attachments": {}, "analysis": {}, "meta": {},
+		"group": {}, "redacted": {}, "amended": {}, "parties": {},
+		"dialog": {}, "attachments": {}, "analysis": {},
+		"extensions": {}, "critical": {},
 	}
 
 	AllowedPartyProperties = map[string]struct{}{
 		"tel": {}, "stir": {}, "mailto": {}, "name": {}, "validation": {},
-		"gmlpos": {}, "civicaddress": {}, "timezone": {}, "uuid": {},
-		"role": {}, "contact_list": {}, "meta": {},
+		"gmlpos": {}, "civicaddress": {}, "uuid": {},
+		"sip": {}, "did": {},
 	}
 
 	AllowedDialogProperties = map[string]struct{}{
 		"type": {}, "start": {}, "duration": {}, "parties": {}, "originator": {},
 		"mediatype": {}, "filename": {}, "body": {}, "encoding": {},
-		"url": {}, "content_hash": {}, "alg": {}, "signature": {},
+		"url": {}, "content_hash": {},
 		"disposition": {}, "party_history": {}, "transferee": {}, "transferor": {},
 		"transfer_target": {}, "original": {}, "consultation": {}, "target_dialog": {},
-		"campaign": {}, "interaction_type": {}, "interaction_id": {}, "skill": {},
-		"application": {}, "message_id": {}, "meta": {},
+		"application": {}, "message_id": {}, "session_id": {},
 	}
 
 	AllowedAttachmentProperties = map[string]struct{}{
 		"body": {}, "encoding": {}, "url": {}, "content_hash": {}, "dialog": {},
-		"party": {}, "start": {}, "mediatype": {}, "filename": {}, "meta": {},
+		"party": {}, "start": {}, "mediatype": {}, "filename": {}, "purpose": {},
 	}
 
 	AllowedAnalysisProperties = map[string]struct{}{
 		"type": {}, "dialog": {}, "mediatype": {}, "filename": {}, "vendor": {},
 		"product": {}, "schema": {}, "body": {}, "encoding": {}, "url": {},
-		"content_hash": {}, "meta": {},
+		"content_hash": {},
 	}
 )
 
@@ -71,42 +71,44 @@ var lastV8Timestamp int64
 
 // VCon is the top-level container.
 type VCon struct {
-	Vcon        string       `json:"vcon"`
-	UUID        string       `json:"uuid"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   *time.Time   `json:"updated_at,omitempty"`
-	Subject     string       `json:"subject,omitempty"`
-	Group       interface{}  `json:"group,omitempty"`
-	Redacted    interface{}  `json:"redacted,omitempty"`
-	Appended    bool         `json:"appended,omitempty"`
-	Parties     []Party      `json:"parties,omitempty"`
-	Dialog      []Dialog     `json:"dialog,omitempty"`
-	Analysis    []Analysis   `json:"analysis,omitempty"`
-	Attachments []Attachment `json:"attachments,omitempty"`
-	Meta        interface{}  `json:"meta,omitempty"`
-	
-	// Internal property handling mode
-	propertyHandling string `json:"-"`
+	Vcon        string           `json:"vcon,omitempty"`
+	UUID        string           `json:"uuid"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   *time.Time       `json:"updated_at,omitempty"`
+	Subject     string           `json:"subject,omitempty"`
+	Group       []json.RawMessage `json:"group,omitempty"`
+	Redacted    *RedactedObject  `json:"redacted,omitempty"`
+	Amended     *AmendedObject   `json:"amended,omitempty"`
+	Extensions  []string         `json:"extensions,omitempty"`
+	Critical    []string         `json:"critical,omitempty"`
+	Parties     []Party          `json:"parties"`
+	Dialog      []Dialog         `json:"dialog,omitempty"`
+	Analysis    []Analysis       `json:"analysis,omitempty"`
+	Attachments []Attachment     `json:"attachments,omitempty"`
+
+	// Internal fields
+	propertyHandling string             `json:"-"`
+	registry         *ExtensionRegistry `json:"-"`
 }
 
 // Analysis holds machine-generated artefacts.
 type Analysis struct {
-	Type        string      `json:"type"`
-	Dialog      interface{} `json:"dialog,omitempty"`
-	MediaType   string      `json:"mediatype,omitempty"`
-	Filename    string      `json:"filename,omitempty"`
-	Vendor      string      `json:"vendor,omitempty"`
-	Product     string      `json:"product,omitempty"`
-	Schema      interface{} `json:"schema,omitempty"`
-	Body        interface{} `json:"body,omitempty"`
-	Encoding    string      `json:"encoding,omitempty"`
-	URL         string      `json:"url,omitempty"`
-	ContentHash string      `json:"content_hash,omitempty"`
-	Meta        interface{} `json:"meta,omitempty"`
+	Type        string          `json:"type"`
+	Dialog      interface{}     `json:"dialog,omitempty"`
+	MediaType   string          `json:"mediatype,omitempty"`
+	Filename    string          `json:"filename,omitempty"`
+	Vendor      string          `json:"vendor,omitempty"`
+	Product     string          `json:"product,omitempty"`
+	Schema      interface{}     `json:"schema,omitempty"`
+	Body        interface{}     `json:"body,omitempty"`
+	Encoding    string          `json:"encoding,omitempty"`
+	URL         string          `json:"url,omitempty"`
+	ContentHash ContentHashList `json:"content_hash,omitempty"`
 }
 
-// ProcessProperties handles properties based on the provided mode
-func ProcessProperties(obj map[string]interface{}, allowedProps map[string]struct{}, mode string) map[string]interface{} {
+// ProcessProperties handles properties based on the provided mode.
+// The optional registry parameter merges extension params into the allowed set.
+func ProcessProperties(obj map[string]interface{}, allowedProps map[string]struct{}, mode string, registry ...*ExtensionRegistry) map[string]interface{} {
 	if obj == nil {
 		return nil
 	}
@@ -154,6 +156,16 @@ func ProcessProperties(obj map[string]interface{}, allowedProps map[string]struc
 	return result
 }
 
+// VConOption configures a VCon.
+type VConOption func(*VCon)
+
+// WithRegistry sets a custom extension registry on a VCon.
+func WithRegistry(r *ExtensionRegistry) VConOption {
+	return func(v *VCon) {
+		v.registry = r
+	}
+}
+
 // New creates an empty, valid container with property handling options.
 func New(domain string, propertyHandling ...string) *VCon {
 	handling := PropertyHandlingDefault
@@ -170,6 +182,7 @@ func New(domain string, propertyHandling ...string) *VCon {
 		Analysis:         []Analysis{},
 		Attachments:      []Attachment{},
 		propertyHandling: handling,
+		registry:         DefaultRegistry,
 	}
 	return vcon
 }
@@ -186,10 +199,15 @@ func BuildFromJSON(jsonStr string, propertyHandling ...string) (*VCon, error) {
 		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
+	// Auto-detect v0.0.3 and migrate
+	if ver, ok := rawMap["vcon"].(string); ok && ver == "0.0.3" {
+		migrateV003ToV040(rawMap)
+	}
+
 	// Schema validation section
     compiler := jsonschema.NewCompiler()
     compiler.DefaultDraft(jsonschema.Draft2020)
-    
+
     var schemaData interface{}
 	if err := json.Unmarshal(vconSchema, &schemaData); err != nil {
 		return nil, err
@@ -279,7 +297,92 @@ func BuildFromJSON(jsonStr string, propertyHandling ...string) (*VCon, error) {
 	}
 
 	vcon.propertyHandling = handling
+	vcon.registry = DefaultRegistry
 	return &vcon, nil
+}
+
+// migrateV003ToV040 converts a v0.0.3 raw map to v0.4.0 format in-place.
+func migrateV003ToV040(m map[string]interface{}) {
+	// Update version
+	m["vcon"] = "0.4.0"
+
+	// Remove deprecated fields
+	delete(m, "appended")
+	delete(m, "meta")
+
+	// Ensure parties is present (now required)
+	if _, ok := m["parties"]; !ok {
+		m["parties"] = []interface{}{}
+	}
+
+	// Migrate dialogs: remove alg/signature, convert encoding, fix content_hash
+	if dialogs, ok := m["dialog"].([]interface{}); ok {
+		for _, d := range dialogs {
+			if dm, ok := d.(map[string]interface{}); ok {
+				delete(dm, "alg")
+				delete(dm, "signature")
+				delete(dm, "meta")
+				// Convert "base64" encoding to "base64url"
+				if enc, ok := dm["encoding"].(string); ok && enc == "base64" {
+					dm["encoding"] = "base64url"
+				}
+				// Migrate content_hash from "alg:hash" to "alg-hash"
+				migrateContentHash(dm)
+				// Remove CC extension fields from core
+				delete(dm, "campaign")
+				delete(dm, "interaction_type")
+				delete(dm, "interaction_id")
+				delete(dm, "skill")
+			}
+		}
+	}
+
+	// Migrate parties: remove role/contact_list/timezone/meta from core
+	if parties, ok := m["parties"].([]interface{}); ok {
+		for _, p := range parties {
+			if pm, ok := p.(map[string]interface{}); ok {
+				delete(pm, "role")
+				delete(pm, "contact_list")
+				delete(pm, "timezone")
+				delete(pm, "meta")
+			}
+		}
+	}
+
+	// Migrate attachments: remove meta, convert encoding, fix content_hash
+	if attachments, ok := m["attachments"].([]interface{}); ok {
+		for _, a := range attachments {
+			if am, ok := a.(map[string]interface{}); ok {
+				delete(am, "meta")
+				if enc, ok := am["encoding"].(string); ok && enc == "base64" {
+					am["encoding"] = "base64url"
+				}
+				migrateContentHash(am)
+			}
+		}
+	}
+
+	// Migrate analysis: remove meta, convert encoding, fix content_hash
+	if analyses, ok := m["analysis"].([]interface{}); ok {
+		for _, a := range analyses {
+			if am, ok := a.(map[string]interface{}); ok {
+				delete(am, "meta")
+				if enc, ok := am["encoding"].(string); ok && enc == "base64" {
+					am["encoding"] = "base64url"
+				}
+				migrateContentHash(am)
+			}
+		}
+	}
+}
+
+// migrateContentHash converts content_hash from old "alg:hash" format to "alg-hash".
+func migrateContentHash(m map[string]interface{}) {
+	ch, ok := m["content_hash"].(string)
+	if !ok || ch == "" {
+		return
+	}
+	m["content_hash"] = strings.ReplaceAll(ch, ":", "-")
 }
 
 // UUID8DomainName generates a UUID8 using a domain name
@@ -302,14 +405,14 @@ func UUID8DomainName(domain string) string {
 // UUID8Time generates a UUID8 using a timestamp and custom bits
 func UUID8Time(customC62Bits uint64) string {
 	now := time.Now().UnixNano()
-	
+
 	// Ensure timestamp is monotonically increasing
 	if now <= lastV8Timestamp {
 		now = lastV8Timestamp + 1
 	}
 	lastV8Timestamp = now
 
-	
+
 	// Create UUID v7 format: timestamp_ms + rand
 	// Then modify version bits to make it UUID v8
 	uuidV7, err := uuid.NewV7()
@@ -318,14 +421,14 @@ func UUID8Time(customC62Bits uint64) string {
 		uuidV7 = uuid.New()
 	}
 	uuidBytes := uuidV7[:]
-	
+
 	// Set the version to 8
 	uuidBytes[6] = (uuidBytes[6] & 0x0F) | 0x80
-	
+
 	// Create UUID from the bytes
 	uuidObj, _ := uuid.FromBytes(uuidBytes)
 	uuidStr := uuidObj.String()
-	
+
 	return uuidStr
 }
 
@@ -510,15 +613,37 @@ func LoadFromURL(url string, propertyHandling ...string) (*VCon, error) {
 
 // Validate validates the VCon structure
 func (v *VCon) Validate() error {
-	// Check required fields
-	if v.Vcon == "" {
-		return fmt.Errorf("missing required field: vcon")
-	}
 	if v.UUID == "" {
 		return fmt.Errorf("missing required field: uuid")
 	}
 	if v.CreatedAt.IsZero() {
 		return fmt.Errorf("missing required field: created_at")
+	}
+
+	// Validate that redacted, amended, and group are mutually exclusive
+	count := 0
+	if v.Redacted != nil {
+		count++
+	}
+	if v.Amended != nil {
+		count++
+	}
+	if len(v.Group) > 0 {
+		count++
+	}
+	if count > 1 {
+		return fmt.Errorf("redacted, amended, and group are mutually exclusive")
+	}
+
+	// Validate critical extensions
+	if len(v.Critical) > 0 {
+		reg := v.registry
+		if reg == nil {
+			reg = DefaultRegistry
+		}
+		if err := reg.ValidateCritical(v.Critical); err != nil {
+			return fmt.Errorf("critical extension validation: %w", err)
+		}
 	}
 
 	// Validate dialogs
@@ -531,7 +656,7 @@ func (v *VCon) Validate() error {
 				}
 			}
 		}
-		
+
 		// Check required dialog fields
 		if dialog.Type == "" {
 			return fmt.Errorf("dialog at index %d missing required field: type", i)
@@ -559,11 +684,7 @@ func (v *VCon) Validate() error {
 // IsValid validates the VCon and returns if it's valid and any errors
 func (v *VCon) IsValid() (bool, []string) {
 	var errors []string
-	
-	// Check required fields
-	if v.Vcon == "" {
-		errors = append(errors, "missing required field: vcon")
-	}
+
 	if v.UUID == "" {
 		errors = append(errors, "missing required field: uuid")
 	}
@@ -581,7 +702,7 @@ func (v *VCon) IsValid() (bool, []string) {
 				}
 			}
 		}
-		
+
 		// Check required dialog fields
 		if dialog.Type == "" {
 			errors = append(errors, fmt.Sprintf("dialog at index %d missing required field: type", i))

@@ -53,7 +53,7 @@ func runZoom(_ *cobra.Command, args []string) error {
 	v.CreatedAt = meta.Start
 
 	// host
-	v.Parties = append(v.Parties, vcon.Party{ Name: meta.Host, Mailto: meta.HostEmail, Role: "host" })
+	v.Parties = append(v.Parties, vcon.Party{ Name: meta.Host, Mailto: meta.HostEmail })
 	// participants
 	for _, p := range meta.Participants {
 		v.Parties = append(v.Parties, vcon.Party{ Name: p.Name, Mailto: p.Email })

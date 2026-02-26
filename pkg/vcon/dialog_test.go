@@ -58,16 +58,17 @@ func TestDialogMIMETypes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.mimeType, func(t *testing.T) {		dialog := Dialog{
-			Type:      "recording",
-			StartTime: &time.Time{},
-			MediaType: tt.mimeType,
-		}
+		t.Run(tt.mimeType, func(t *testing.T) {
+			dialog := Dialog{
+				Type:      "recording",
+				StartTime: &time.Time{},
+				MediaType: tt.mimeType,
+			}
 
-		_, err := json.Marshal(dialog)
-		if err != nil {
-			t.Errorf("failed to marshal dialog: %v", err)
-		}
+			_, err := json.Marshal(dialog)
+			if err != nil {
+				t.Errorf("failed to marshal dialog: %v", err)
+			}
 
 			if tt.category == "audio" {
 				found := false
@@ -100,7 +101,7 @@ func TestDialogMIMETypes(t *testing.T) {
 
 func TestDialogWithBody(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	dialog := Dialog{
 		Type:      "text",
 		StartTime: &startTime,
@@ -130,7 +131,7 @@ func TestDialogWithBody(t *testing.T) {
 
 func TestDialogWithURL(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	dialog := Dialog{
 		Type:        "recording",
 		StartTime:   &startTime,
@@ -138,8 +139,7 @@ func TestDialogWithURL(t *testing.T) {
 		Filename:    "recording.wav",
 		MediaType:   MIMETypeAudioWav,
 		Duration:    120.5,
-		ContentHash: "sha256hash",
-		Algorithm:   "sha256",
+		ContentHash: ContentHashList{{Algorithm: "sha512", Hash: "abc123"}},
 	}
 
 	jsonData, err := json.Marshal(dialog)
@@ -160,23 +160,26 @@ func TestDialogWithURL(t *testing.T) {
 		t.Errorf("expected duration %f, got %f", dialog.Duration, unmarshaled.Duration)
 	}
 
-	if unmarshaled.ContentHash != dialog.ContentHash {
-		t.Errorf("expected content_hash %s, got %s", dialog.ContentHash, unmarshaled.ContentHash)
+	if unmarshaled.ContentHash.IsEmpty() {
+		t.Error("expected content_hash to be preserved")
+	}
+	if unmarshaled.ContentHash[0].Algorithm != "sha512" {
+		t.Errorf("expected algorithm sha512, got %s", unmarshaled.ContentHash[0].Algorithm)
 	}
 }
 
 func TestDialogTransfer(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	dialog := Dialog{
 		Type:           "transfer",
 		StartTime:      &startTime,
 		Transferee:     0,
 		Transferor:     1,
-		TransferTarget: 2,
-		Original:       3,
-		Consultation:   4,
-		TargetDialog:   5,
+		TransferTarget: NewIntValue(2),
+		Original:       NewIntValue(3),
+		Consultation:   NewIntValue(4),
+		TargetDialog:   NewIntValue(5),
 	}
 
 	jsonData, err := json.Marshal(dialog)
@@ -197,14 +200,41 @@ func TestDialogTransfer(t *testing.T) {
 		t.Errorf("expected transferor %d, got %d", dialog.Transferor, unmarshaled.Transferor)
 	}
 
-	if unmarshaled.TransferTarget != dialog.TransferTarget {
-		t.Errorf("expected transfer_target %d, got %d", dialog.TransferTarget, unmarshaled.TransferTarget)
+	tt, ok := unmarshaled.TransferTarget.AsInt()
+	if !ok || tt != 2 {
+		t.Errorf("expected transfer_target 2, got %v", unmarshaled.TransferTarget)
+	}
+}
+
+func TestDialogTransferWithSlice(t *testing.T) {
+	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	dialog := Dialog{
+		Type:           "transfer",
+		StartTime:      &startTime,
+		TransferTarget: NewIntSliceValue([]int{2, 3}),
+		Original:       NewIntSliceValue([]int{0, 1}),
+	}
+
+	jsonData, err := json.Marshal(dialog)
+	if err != nil {
+		t.Fatalf("failed to marshal transfer dialog: %v", err)
+	}
+
+	var unmarshaled Dialog
+	if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+		t.Fatalf("failed to unmarshal transfer dialog: %v", err)
+	}
+
+	ttSlice := unmarshaled.TransferTarget.AsSlice()
+	if len(ttSlice) != 2 || ttSlice[0] != 2 || ttSlice[1] != 3 {
+		t.Errorf("expected transfer_target [2,3], got %v", ttSlice)
 	}
 }
 
 func TestDialogWithPartyHistory(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	history := []PartyHistory{
 		{
 			Party: 0,
@@ -255,12 +285,12 @@ func TestDialogWithPartyHistory(t *testing.T) {
 }
 
 func TestDialogWithEncoding(t *testing.T) {
-	tests := []string{"base64", "base64url", "json", "none"}
-	
+	tests := []string{"base64url", "json", "none"}
+
 	for _, encoding := range tests {
 		t.Run(encoding, func(t *testing.T) {
 			startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-			
+
 			dialog := Dialog{
 				Type:      "text",
 				StartTime: &startTime,
@@ -300,7 +330,7 @@ func TestDialogWithEncoding(t *testing.T) {
 
 func TestDialogPartiesInterface(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	tests := []struct {
 		name    string
 		parties interface{}
@@ -343,7 +373,7 @@ func TestDialogPartiesInterface(t *testing.T) {
 
 func TestDialogOmitEmpty(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	// Test minimal dialog
 	dialog := Dialog{
 		Type:      "text",
@@ -369,7 +399,7 @@ func TestDialogOmitEmpty(t *testing.T) {
 	// Optional fields should be omitted when empty
 	unwantedFields := []string{
 		"duration", "parties", "originator", "mediatype", "filename",
-		"body", "encoding", "url", "content_hash", "alg", "signature",
+		"body", "encoding", "url", "content_hash",
 		"disposition", "party_history", "transferee", "transferor",
 		"transfer_target", "original", "consultation", "target_dialog",
 	}
@@ -418,8 +448,8 @@ func TestSupportedMIMETypes(t *testing.T) {
 }
 
 func TestValidEncodings(t *testing.T) {
-	expected := []string{"base64", "base64url", "json", "none"}
-	
+	expected := []string{"base64url", "json", "none"}
+
 	if len(ValidEncodings) != len(expected) {
 		t.Errorf("expected %d valid encodings, got %d", len(expected), len(ValidEncodings))
 	}
