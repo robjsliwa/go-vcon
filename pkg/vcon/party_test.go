@@ -289,7 +289,7 @@ func TestPartySipAndDid(t *testing.T) {
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
 		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-		containsSubstring(s, substr))))
+			containsSubstring(s, substr))))
 }
 
 func containsSubstring(s, substr string) bool {

@@ -131,7 +131,7 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	// Convert back to SignedVCon to verify
 	var signedVCon vcon.SignedVCon
 	signedVCon.JSON = decrypted
-	
+
 	// Create a root pool for verification
 	rootPool := x509.NewCertPool()
 	rootPool.AddCert(certs[0])
@@ -215,11 +215,11 @@ func TestCompleteRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Vcon, finalVCon.Vcon, "Version should match")
 	assert.Equal(t, len(original.Parties), len(finalVCon.Parties), "Party count should match")
 	assert.Equal(t, len(original.Dialog), len(finalVCon.Dialog), "Dialog count should match")
-	
+
 	// Check party details
 	assert.Equal(t, original.Parties[0].Name, finalVCon.Parties[0].Name, "Party name should match")
 	assert.Equal(t, original.Parties[0].Tel, finalVCon.Parties[0].Tel, "Party tel should match")
-	
+
 	// Check dialog details
 	assert.Equal(t, original.Dialog[0].Type, finalVCon.Dialog[0].Type, "Dialog type should match")
 	assert.Equal(t, original.Dialog[0].Duration, finalVCon.Dialog[0].Duration, "Dialog duration should match")
@@ -235,22 +235,26 @@ func TestCompleteRoundTrip(t *testing.T) {
 
 // TestVerifyRoundTrip uses the test key fixtures for verification
 func TestVerifyRoundTrip(t *testing.T) {
-    leafKey, leafCert, rootPool := loadKeys(t) // helper parses PEM files
+	leafKey, leafCert, rootPool := loadKeys(t) // helper parses PEM files
 
-    vc := vcon.New("example.com")
-    vc.Subject = "Test with fixture keys"
+	vc := vcon.New("example.com")
+	vc.Subject = "Test with fixture keys"
 
-    signed, err := vc.Sign(leafKey, []*x509.Certificate{leafCert})
-    if err != nil { t.Fatalf("sign: %v", err) }
+	signed, err := vc.Sign(leafKey, []*x509.Certificate{leafCert})
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
 
-    got, err := signed.Verify(rootPool)
-    if err != nil { t.Fatalf("verify: %v", err) }
+	got, err := signed.Verify(rootPool)
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
 
-    if got.Subject != vc.Subject {
-        t.Fatalf("subject mismatch: want %s got %s", vc.Subject, got.Subject)
-    }
-    
-    // Additional checks
-    assert.Equal(t, vc.UUID, got.UUID, "UUID should match")
-    assert.Equal(t, vc.Vcon, got.Vcon, "Version should match")
+	if got.Subject != vc.Subject {
+		t.Fatalf("subject mismatch: want %s got %s", vc.Subject, got.Subject)
+	}
+
+	// Additional checks
+	assert.Equal(t, vc.UUID, got.UUID, "UUID should match")
+	assert.Equal(t, vc.Vcon, got.Vcon, "Version should match")
 }

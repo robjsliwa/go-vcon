@@ -25,27 +25,27 @@ func TestRoundTrip(t *testing.T) {
 
 	idx := v.AddParty(vcon.Party{Name: "Alice"})
 	assert.Equal(t, 0, idx)
-	
+
 	now := time.Now().UTC()
 	v.AddDialog(vcon.Dialog{
-        StartTime: &now,
-        Originator: 0,
-        Type: "text",
-        MediaType: "audio/wav",
-        ContentHash: vcon.ContentHashList{{Algorithm: "sha512", Hash: "test-hash"}},
-        Body: "Hello Alice!",
-        Parties: 1,
-        Encoding: "base64url",
-    })
+		StartTime:   &now,
+		Originator:  0,
+		Type:        "text",
+		MediaType:   "audio/wav",
+		ContentHash: vcon.ContentHashList{{Algorithm: "sha512", Hash: "test-hash"}},
+		Body:        "Hello Alice!",
+		Parties:     1,
+		Encoding:    "base64url",
+	})
 
 	// Test the JSON marshaling and unmarshaling
 	data, err := json.Marshal(v)
 	require.NoError(t, err)
-	
+
 	var out vcon.VCon
 	err = json.Unmarshal(data, &out)
 	require.NoError(t, err)
-	
+
 	// Re-enable validation now that we've fixed the issues
 	err = out.Validate()
 	require.NoError(t, err, "validate: %v", err)
@@ -60,10 +60,10 @@ func TestRoundTrip(t *testing.T) {
 
 func TestAddParty(t *testing.T) {
 	v := vcon.New("example.com")
-	
+
 	idx1 := v.AddParty(vcon.Party{Name: "Alice"})
 	idx2 := v.AddParty(vcon.Party{Name: "Bob"})
-	
+
 	assert.Equal(t, 0, idx1)
 	assert.Equal(t, 1, idx2)
 	assert.Equal(t, 2, len(v.Parties))
@@ -73,15 +73,15 @@ func TestAddParty(t *testing.T) {
 
 func TestAddDialog(t *testing.T) {
 	v := vcon.New("example.com")
-	
+
 	now := time.Now().UTC()
 	idx := v.AddDialog(vcon.Dialog{
-		StartTime: &now,
-		Duration: (5 * time.Second).Seconds(),
-		MediaType: "audio/wav",
+		StartTime:   &now,
+		Duration:    (5 * time.Second).Seconds(),
+		MediaType:   "audio/wav",
 		ContentHash: vcon.ContentHashList{{Algorithm: "sha512", Hash: "test-hash"}},
 	})
-	
+
 	assert.Equal(t, 0, idx)
 	assert.Equal(t, 1, len(v.Dialog))
 	assert.Equal(t, "audio/wav", v.Dialog[0].MediaType)
@@ -89,18 +89,17 @@ func TestAddDialog(t *testing.T) {
 
 func TestAddAnalysis(t *testing.T) {
 	v := vcon.New("example.com")
-	
+
 	idx := v.AddAnalysis(vcon.Analysis{
-		Type: "transcript",
-		Vendor: "test-vendor",
-		Product: "test-product",
+		Type:        "transcript",
+		Vendor:      "test-vendor",
+		Product:     "test-product",
 		ContentHash: vcon.ContentHashList{{Algorithm: "sha512", Hash: "test-content"}},
 	})
-	
+
 	assert.Equal(t, 0, idx)
 	assert.Equal(t, 1, len(v.Analysis))
 	assert.Equal(t, "transcript", v.Analysis[0].Type)
 	assert.Equal(t, "test-vendor", v.Analysis[0].Vendor)
 	assert.Equal(t, "test-product", v.Analysis[0].Product)
 }
-

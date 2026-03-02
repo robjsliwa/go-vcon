@@ -71,20 +71,20 @@ var lastV8Timestamp int64
 
 // VCon is the top-level container.
 type VCon struct {
-	Vcon        string           `json:"vcon,omitempty"`
-	UUID        string           `json:"uuid"`
-	CreatedAt   time.Time        `json:"created_at"`
-	UpdatedAt   *time.Time       `json:"updated_at,omitempty"`
-	Subject     string           `json:"subject,omitempty"`
+	Vcon        string            `json:"vcon,omitempty"`
+	UUID        string            `json:"uuid"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   *time.Time        `json:"updated_at,omitempty"`
+	Subject     string            `json:"subject,omitempty"`
 	Group       []json.RawMessage `json:"group,omitempty"`
-	Redacted    *RedactedObject  `json:"redacted,omitempty"`
-	Amended     *AmendedObject   `json:"amended,omitempty"`
-	Extensions  []string         `json:"extensions,omitempty"`
-	Critical    []string         `json:"critical,omitempty"`
-	Parties     []Party          `json:"parties"`
-	Dialog      []Dialog         `json:"dialog,omitempty"`
-	Analysis    []Analysis       `json:"analysis,omitempty"`
-	Attachments []Attachment     `json:"attachments,omitempty"`
+	Redacted    *RedactedObject   `json:"redacted,omitempty"`
+	Amended     *AmendedObject    `json:"amended,omitempty"`
+	Extensions  []string          `json:"extensions,omitempty"`
+	Critical    []string          `json:"critical,omitempty"`
+	Parties     []Party           `json:"parties"`
+	Dialog      []Dialog          `json:"dialog,omitempty"`
+	Analysis    []Analysis        `json:"analysis,omitempty"`
+	Attachments []Attachment      `json:"attachments,omitempty"`
 
 	// Internal fields
 	propertyHandling string             `json:"-"`
@@ -187,6 +187,54 @@ func New(domain string, propertyHandling ...string) *VCon {
 	return vcon
 }
 
+func validateAgainstSchema(rawMap map[string]interface{}) error {
+	compiler := jsonschema.NewCompiler()
+	compiler.DefaultDraft(jsonschema.Draft2020)
+
+	var schemaData interface{}
+	if err := json.Unmarshal(vconSchema, &schemaData); err != nil {
+		return err
+	}
+	if err := compiler.AddResource("vcon.schema.json", schemaData); err != nil {
+		return err
+	}
+	schema, err := compiler.Compile("vcon.schema.json")
+	if err != nil {
+		return err
+	}
+	if err := schema.Validate(rawMap); err != nil {
+		return fmt.Errorf("schema validation failed: %w", err)
+	}
+	return nil
+}
+
+func processNestedSlices(m map[string]interface{}, handling string) {
+	sliceProps := []struct {
+		key     string
+		allowed map[string]struct{}
+	}{
+		{"parties", AllowedPartyProperties},
+		{"dialog", AllowedDialogProperties},
+		{"attachments", AllowedAttachmentProperties},
+		{"analysis", AllowedAnalysisProperties},
+	}
+	for _, sp := range sliceProps {
+		items, ok := m[sp.key].([]interface{})
+		if !ok {
+			continue
+		}
+		processed := make([]interface{}, len(items))
+		for i, item := range items {
+			if itemMap, ok := item.(map[string]interface{}); ok {
+				processed[i] = ProcessProperties(itemMap, sp.allowed, handling)
+			} else {
+				processed[i] = item
+			}
+		}
+		m[sp.key] = processed
+	}
+}
+
 // BuildFromJSON creates a VCon from a JSON string
 func BuildFromJSON(jsonStr string, propertyHandling ...string) (*VCon, error) {
 	handling := PropertyHandlingDefault
@@ -204,25 +252,9 @@ func BuildFromJSON(jsonStr string, propertyHandling ...string) (*VCon, error) {
 		migrateV003ToV040(rawMap)
 	}
 
-	// Schema validation section
-    compiler := jsonschema.NewCompiler()
-    compiler.DefaultDraft(jsonschema.Draft2020)
-
-    var schemaData interface{}
-	if err := json.Unmarshal(vconSchema, &schemaData); err != nil {
+	if err := validateAgainstSchema(rawMap); err != nil {
 		return nil, err
 	}
-    if err := compiler.AddResource("vcon.schema.json", schemaData); err != nil {
-        return nil, err
-    }
-    schema, err := compiler.Compile("vcon.schema.json")
-    if err != nil {
-        return nil, err
-    }
-
-    if err := schema.Validate(rawMap); err != nil {
-        return nil, fmt.Errorf("schema validation failed: %w", err)
-    }
 
 	// Process top-level properties
 	processedMap := ProcessProperties(rawMap, AllowedVConProperties, handling)
@@ -236,54 +268,7 @@ func BuildFromJSON(jsonStr string, propertyHandling ...string) (*VCon, error) {
 		processedMap["created_at"] = parsedTime
 	}
 
-	// Process nested structures
-	if parties, ok := processedMap["parties"].([]interface{}); ok {
-		processedParties := make([]interface{}, len(parties))
-		for i, party := range parties {
-			if partyMap, ok := party.(map[string]interface{}); ok {
-				processedParties[i] = ProcessProperties(partyMap, AllowedPartyProperties, handling)
-			} else {
-				processedParties[i] = party
-			}
-		}
-		processedMap["parties"] = processedParties
-	}
-
-	if dialogs, ok := processedMap["dialog"].([]interface{}); ok {
-		processedDialogs := make([]interface{}, len(dialogs))
-		for i, dialog := range dialogs {
-			if dialogMap, ok := dialog.(map[string]interface{}); ok {
-				processedDialogs[i] = ProcessProperties(dialogMap, AllowedDialogProperties, handling)
-			} else {
-				processedDialogs[i] = dialog
-			}
-		}
-		processedMap["dialog"] = processedDialogs
-	}
-
-	if attachments, ok := processedMap["attachments"].([]interface{}); ok {
-		processedAttachments := make([]interface{}, len(attachments))
-		for i, attachment := range attachments {
-			if attachmentMap, ok := attachment.(map[string]interface{}); ok {
-				processedAttachments[i] = ProcessProperties(attachmentMap, AllowedAttachmentProperties, handling)
-			} else {
-				processedAttachments[i] = attachment
-			}
-		}
-		processedMap["attachments"] = processedAttachments
-	}
-
-	if analyses, ok := processedMap["analysis"].([]interface{}); ok {
-		processedAnalyses := make([]interface{}, len(analyses))
-		for i, analysis := range analyses {
-			if analysisMap, ok := analysis.(map[string]interface{}); ok {
-				processedAnalyses[i] = ProcessProperties(analysisMap, AllowedAnalysisProperties, handling)
-			} else {
-				processedAnalyses[i] = analysis
-			}
-		}
-		processedMap["analysis"] = processedAnalyses
-	}
+	processNestedSlices(processedMap, handling)
 
 	// Marshal back to JSON and then to VCon
 	processedJSON, err := json.Marshal(processedMap)
@@ -302,78 +287,64 @@ func BuildFromJSON(jsonStr string, propertyHandling ...string) (*VCon, error) {
 }
 
 // migrateV003ToV040 converts a v0.0.3 raw map to v0.4.0 format in-place.
+// migrateSliceItems applies a migration function to each map item in a JSON array field.
+func migrateSliceItems(m map[string]interface{}, key string, fn func(map[string]interface{})) {
+	items, ok := m[key].([]interface{})
+	if !ok {
+		return
+	}
+	for _, item := range items {
+		if itemMap, ok := item.(map[string]interface{}); ok {
+			fn(itemMap)
+		}
+	}
+}
+
+// migrateEncodingAndHash converts "base64" to "base64url" and fixes content_hash format.
+func migrateEncodingAndHash(m map[string]interface{}) {
+	if enc, ok := m["encoding"].(string); ok && enc == "base64" {
+		m["encoding"] = "base64url"
+	}
+	migrateContentHash(m)
+}
+
 func migrateV003ToV040(m map[string]interface{}) {
-	// Update version
 	m["vcon"] = "0.4.0"
 
-	// Remove deprecated fields
 	delete(m, "appended")
 	delete(m, "meta")
 
-	// Ensure parties is present (now required)
 	if _, ok := m["parties"]; !ok {
 		m["parties"] = []interface{}{}
 	}
 
-	// Migrate dialogs: remove alg/signature, convert encoding, fix content_hash
-	if dialogs, ok := m["dialog"].([]interface{}); ok {
-		for _, d := range dialogs {
-			if dm, ok := d.(map[string]interface{}); ok {
-				delete(dm, "alg")
-				delete(dm, "signature")
-				delete(dm, "meta")
-				// Convert "base64" encoding to "base64url"
-				if enc, ok := dm["encoding"].(string); ok && enc == "base64" {
-					dm["encoding"] = "base64url"
-				}
-				// Migrate content_hash from "alg:hash" to "alg-hash"
-				migrateContentHash(dm)
-				// Remove CC extension fields from core
-				delete(dm, "campaign")
-				delete(dm, "interaction_type")
-				delete(dm, "interaction_id")
-				delete(dm, "skill")
-			}
-		}
-	}
+	migrateSliceItems(m, "dialog", func(dm map[string]interface{}) {
+		delete(dm, "alg")
+		delete(dm, "signature")
+		delete(dm, "meta")
+		migrateEncodingAndHash(dm)
+		delete(dm, "campaign")
+		delete(dm, "interaction_type")
+		delete(dm, "interaction_id")
+		delete(dm, "skill")
+	})
 
-	// Migrate parties: remove role/contact_list/timezone/meta from core
-	if parties, ok := m["parties"].([]interface{}); ok {
-		for _, p := range parties {
-			if pm, ok := p.(map[string]interface{}); ok {
-				delete(pm, "role")
-				delete(pm, "contact_list")
-				delete(pm, "timezone")
-				delete(pm, "meta")
-			}
-		}
-	}
+	migrateSliceItems(m, "parties", func(pm map[string]interface{}) {
+		delete(pm, "role")
+		delete(pm, "contact_list")
+		delete(pm, "timezone")
+		delete(pm, "meta")
+	})
 
-	// Migrate attachments: remove meta, convert encoding, fix content_hash
-	if attachments, ok := m["attachments"].([]interface{}); ok {
-		for _, a := range attachments {
-			if am, ok := a.(map[string]interface{}); ok {
-				delete(am, "meta")
-				if enc, ok := am["encoding"].(string); ok && enc == "base64" {
-					am["encoding"] = "base64url"
-				}
-				migrateContentHash(am)
-			}
-		}
-	}
+	migrateSliceItems(m, "attachments", func(am map[string]interface{}) {
+		delete(am, "meta")
+		migrateEncodingAndHash(am)
+	})
 
-	// Migrate analysis: remove meta, convert encoding, fix content_hash
-	if analyses, ok := m["analysis"].([]interface{}); ok {
-		for _, a := range analyses {
-			if am, ok := a.(map[string]interface{}); ok {
-				delete(am, "meta")
-				if enc, ok := am["encoding"].(string); ok && enc == "base64" {
-					am["encoding"] = "base64url"
-				}
-				migrateContentHash(am)
-			}
-		}
-	}
+	migrateSliceItems(m, "analysis", func(am map[string]interface{}) {
+		delete(am, "meta")
+		migrateEncodingAndHash(am)
+	})
 }
 
 // migrateContentHash converts content_hash from old "alg:hash" format to "alg-hash".
@@ -411,7 +382,6 @@ func UUID8Time(customC62Bits uint64) string {
 		now = lastV8Timestamp + 1
 	}
 	lastV8Timestamp = now
-
 
 	// Create UUID v7 format: timestamp_ms + rand
 	// Then modify version bits to make it UUID v8
@@ -611,16 +581,18 @@ func LoadFromURL(url string, propertyHandling ...string) (*VCon, error) {
 	return BuildFromJSON(string(data), propertyHandling...)
 }
 
-// Validate validates the VCon structure
-func (v *VCon) Validate() error {
+func (v *VCon) validateCoreFields() []string {
+	var errs []string
 	if v.UUID == "" {
-		return fmt.Errorf("missing required field: uuid")
+		errs = append(errs, "missing required field: uuid")
 	}
 	if v.CreatedAt.IsZero() {
-		return fmt.Errorf("missing required field: created_at")
+		errs = append(errs, "missing required field: created_at")
 	}
+	return errs
+}
 
-	// Validate that redacted, amended, and group are mutually exclusive
+func (v *VCon) validateMutualExclusion() []string {
 	count := 0
 	if v.Redacted != nil {
 		count++
@@ -632,97 +604,79 @@ func (v *VCon) Validate() error {
 		count++
 	}
 	if count > 1 {
-		return fmt.Errorf("redacted, amended, and group are mutually exclusive")
+		return []string{"redacted, amended, and group are mutually exclusive"}
 	}
+	return nil
+}
 
-	// Validate critical extensions
-	if len(v.Critical) > 0 {
-		reg := v.registry
-		if reg == nil {
-			reg = DefaultRegistry
-		}
-		if err := reg.ValidateCritical(v.Critical); err != nil {
-			return fmt.Errorf("critical extension validation: %w", err)
-		}
+func (v *VCon) validateCriticalExtensions() []string {
+	if len(v.Critical) == 0 {
+		return nil
 	}
+	reg := v.registry
+	if reg == nil {
+		reg = DefaultRegistry
+	}
+	if err := reg.ValidateCritical(v.Critical); err != nil {
+		return []string{fmt.Sprintf("critical extension validation: %s", err)}
+	}
+	return nil
+}
 
-	// Validate dialogs
+func (v *VCon) validateDialogs() []string {
+	var errs []string
 	for i, dialog := range v.Dialog {
-		// Check if dialog references valid parties
 		if parties, ok := dialog.Parties.([]int); ok {
 			for _, partyIdx := range parties {
 				if partyIdx < 0 || partyIdx >= len(v.Parties) {
-					return fmt.Errorf("dialog at index %d references invalid party index: %d", i, partyIdx)
+					errs = append(errs, fmt.Sprintf("dialog at index %d references invalid party index: %d", i, partyIdx))
 				}
 			}
 		}
-
-		// Check required dialog fields
 		if dialog.Type == "" {
-			return fmt.Errorf("dialog at index %d missing required field: type", i)
+			errs = append(errs, fmt.Sprintf("dialog at index %d missing required field: type", i))
 		}
 		if dialog.StartTime == nil {
-			return fmt.Errorf("dialog at index %d missing required field: start", i)
+			errs = append(errs, fmt.Sprintf("dialog at index %d missing required field: start", i))
 		}
 	}
+	return errs
+}
 
-	// Validate analysis
+func (v *VCon) validateAnalysis() []string {
+	var errs []string
 	for i, analysis := range v.Analysis {
-		// Check if analysis references valid dialogs
 		if dialogs, ok := analysis.Dialog.([]int); ok {
 			for _, dialogIdx := range dialogs {
 				if dialogIdx < 0 || dialogIdx >= len(v.Dialog) {
-					return fmt.Errorf("analysis at index %d references invalid dialog index: %d", i, dialogIdx)
+					errs = append(errs, fmt.Sprintf("analysis at index %d references invalid dialog index: %d", i, dialogIdx))
 				}
 			}
 		}
 	}
+	return errs
+}
 
+func (v *VCon) allValidationErrors() []string {
+	var errs []string
+	errs = append(errs, v.validateCoreFields()...)
+	errs = append(errs, v.validateMutualExclusion()...)
+	errs = append(errs, v.validateCriticalExtensions()...)
+	errs = append(errs, v.validateDialogs()...)
+	errs = append(errs, v.validateAnalysis()...)
+	return errs
+}
+
+// Validate validates the VCon structure
+func (v *VCon) Validate() error {
+	if errs := v.allValidationErrors(); len(errs) > 0 {
+		return fmt.Errorf("%s", errs[0])
+	}
 	return nil
 }
 
 // IsValid validates the VCon and returns if it's valid and any errors
 func (v *VCon) IsValid() (bool, []string) {
-	var errors []string
-
-	if v.UUID == "" {
-		errors = append(errors, "missing required field: uuid")
-	}
-	if v.CreatedAt.IsZero() {
-		errors = append(errors, "missing required field: created_at")
-	}
-
-	// Validate dialogs
-	for i, dialog := range v.Dialog {
-		// Check if dialog references valid parties
-		if parties, ok := dialog.Parties.([]int); ok {
-			for _, partyIdx := range parties {
-				if partyIdx < 0 || partyIdx >= len(v.Parties) {
-					errors = append(errors, fmt.Sprintf("dialog at index %d references invalid party index: %d", i, partyIdx))
-				}
-			}
-		}
-
-		// Check required dialog fields
-		if dialog.Type == "" {
-			errors = append(errors, fmt.Sprintf("dialog at index %d missing required field: type", i))
-		}
-		if dialog.StartTime == nil {
-			errors = append(errors, fmt.Sprintf("dialog at index %d missing required field: start", i))
-		}
-	}
-
-	// Validate analysis
-	for i, analysis := range v.Analysis {
-		// Check if analysis references valid dialogs
-		if dialogs, ok := analysis.Dialog.([]int); ok {
-			for _, dialogIdx := range dialogs {
-				if dialogIdx < 0 || dialogIdx >= len(v.Dialog) {
-					errors = append(errors, fmt.Sprintf("analysis at index %d references invalid dialog index: %d", i, dialogIdx))
-				}
-			}
-		}
-	}
-
-	return len(errors) == 0, errors
+	errs := v.allValidationErrors()
+	return len(errs) == 0, errs
 }

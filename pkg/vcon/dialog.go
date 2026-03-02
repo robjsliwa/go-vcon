@@ -14,20 +14,20 @@ import (
 
 // MIME types constants
 const (
-	MIMETypePlainText    = "text/plain"
-	MIMETypeAudioWav     = "audio/x-wav"
-	MIMETypeAudioWav2    = "audio/wav"
-	MIMETypeAudioWave    = "audio/wave"
-	MIMETypeAudioMpeg    = "audio/mpeg"
-	MIMETypeAudioMP3     = "audio/mp3"
-	MIMETypeAudioOgg     = "audio/ogg"
-	MIMETypeAudioWebm    = "audio/webm"
-	MIMETypeAudioM4a     = "audio/x-m4a"
-	MIMETypeAudioAAC     = "audio/aac"
-	MIMETypeVideoMP4     = "video/x-mp4"
-	MIMETypeVideoOgg     = "video/ogg"
-	MIMETypeMultipart    = "multipart/mixed"
-	MIMETypeRFC822       = "message/rfc822"
+	MIMETypePlainText = "text/plain"
+	MIMETypeAudioWav  = "audio/x-wav"
+	MIMETypeAudioWav2 = "audio/wav"
+	MIMETypeAudioWave = "audio/wave"
+	MIMETypeAudioMpeg = "audio/mpeg"
+	MIMETypeAudioMP3  = "audio/mp3"
+	MIMETypeAudioOgg  = "audio/ogg"
+	MIMETypeAudioWebm = "audio/webm"
+	MIMETypeAudioM4a  = "audio/x-m4a"
+	MIMETypeAudioAAC  = "audio/aac"
+	MIMETypeVideoMP4  = "video/x-mp4"
+	MIMETypeVideoOgg  = "video/ogg"
+	MIMETypeMultipart = "multipart/mixed"
+	MIMETypeRFC822    = "message/rfc822"
 )
 
 // Valid encoding types (v0.4.0: "base64" removed, only "base64url", "json", "none")
@@ -72,32 +72,32 @@ var VideoMIMETypes = []string{
 
 // Dialog is an interaction (call leg, chat, etc.)
 type Dialog struct {
-	Type          string          `json:"type"`                     // recording, text, transfer, incomplete
-	StartTime     *time.Time      `json:"start"`                    // Required
-	Duration      float64         `json:"duration,omitempty"`
-	Parties       interface{}     `json:"parties,omitempty"`        // int or []int
-	Originator    int             `json:"originator,omitempty"`
-	MediaType     string          `json:"mediatype,omitempty"`      // MIME type
-	Filename      string          `json:"filename,omitempty"`
-	Body          string          `json:"body,omitempty"`
-	Encoding      string          `json:"encoding,omitempty"`       // e.g., "base64url"
-	URL           string          `json:"url,omitempty"`            // For external data
-	ContentHash   ContentHashList `json:"content_hash,omitempty"`   // SHA-512 hash(es)
-	Disposition   string          `json:"disposition,omitempty"`
-	PartyHistory  []PartyHistory  `json:"party_history,omitempty"`
-	SessionID     interface{}     `json:"session_id,omitempty"`     // SessionId or []SessionId
+	Type         string          `json:"type"`  // recording, text, transfer, incomplete
+	StartTime    *time.Time      `json:"start"` // Required
+	Duration     float64         `json:"duration,omitempty"`
+	Parties      interface{}     `json:"parties,omitempty"` // int or []int
+	Originator   int             `json:"originator,omitempty"`
+	MediaType    string          `json:"mediatype,omitempty"` // MIME type
+	Filename     string          `json:"filename,omitempty"`
+	Body         string          `json:"body,omitempty"`
+	Encoding     string          `json:"encoding,omitempty"`     // e.g., "base64url"
+	URL          string          `json:"url,omitempty"`          // For external data
+	ContentHash  ContentHashList `json:"content_hash,omitempty"` // SHA-512 hash(es)
+	Disposition  string          `json:"disposition,omitempty"`
+	PartyHistory []PartyHistory  `json:"party_history,omitempty"`
+	SessionID    interface{}     `json:"session_id,omitempty"` // SessionId or []SessionId
 
 	// Dialog Transfer fields (int or []int per v0.4.0)
-	Transferee     int       `json:"transferee,omitempty"`
-	Transferor     int       `json:"transferor,omitempty"`
+	Transferee     int         `json:"transferee,omitempty"`
+	Transferor     int         `json:"transferor,omitempty"`
 	TransferTarget *IntOrSlice `json:"transfer_target,omitempty"`
 	Original       *IntOrSlice `json:"original,omitempty"`
 	Consultation   *IntOrSlice `json:"consultation,omitempty"`
 	TargetDialog   *IntOrSlice `json:"target_dialog,omitempty"`
 
 	// Additional fields
-	Application     string `json:"application,omitempty"`
-	MessageID       string `json:"message_id,omitempty"`
+	Application string `json:"application,omitempty"`
+	MessageID   string `json:"message_id,omitempty"`
 }
 
 // DialogOption is a function that configures a Dialog
@@ -154,21 +154,76 @@ func WithOriginator(originator int) DialogOption {
 	}
 }
 
+func (d *Dialog) addContentHashToMap(result map[string]interface{}) {
+	if d.ContentHash.IsEmpty() {
+		return
+	}
+	if len(d.ContentHash) == 1 {
+		result["content_hash"] = d.ContentHash[0].String()
+	} else {
+		strs := make([]string, len(d.ContentHash))
+		for i, ch := range d.ContentHash {
+			strs[i] = ch.String()
+		}
+		result["content_hash"] = strs
+	}
+}
+
+func (d *Dialog) addPartyHistoryToMap(result map[string]interface{}) {
+	if len(d.PartyHistory) == 0 {
+		return
+	}
+	partyHistory := make([]map[string]interface{}, len(d.PartyHistory))
+	for i, ph := range d.PartyHistory {
+		phMap := map[string]interface{}{
+			"party": ph.Party,
+			"event": ph.Event,
+			"time":  ph.Time.Format(time.RFC3339),
+		}
+		if ph.Button != "" {
+			phMap["button"] = ph.Button
+		}
+		partyHistory[i] = phMap
+	}
+	result["party_history"] = partyHistory
+}
+
+func (d *Dialog) addTransferFieldsToMap(result map[string]interface{}) {
+	if d.Transferee != 0 {
+		result["transferee"] = d.Transferee
+	}
+	if d.Transferor != 0 {
+		result["transferor"] = d.Transferor
+	}
+	transferFields := []struct {
+		key string
+		val *IntOrSlice
+	}{
+		{"transfer_target", d.TransferTarget},
+		{"original", d.Original},
+		{"consultation", d.Consultation},
+		{"target_dialog", d.TargetDialog},
+	}
+	for _, f := range transferFields {
+		if f.val != nil && !f.val.IsZero() {
+			result[f.key] = f.val.value
+		}
+	}
+}
+
 // ToMap converts the Dialog to a map, excluding empty fields
 func (d *Dialog) ToMap() map[string]interface{} {
 	result := make(map[string]interface{})
 
-	// Ensure we have a start time
 	if d.StartTime == nil {
 		now := time.Now().UTC()
 		d.StartTime = &now
 	}
 
-	// Add non-empty fields to the map
 	if d.Type != "" {
 		result["type"] = d.Type
 	}
-	result["start"] = d.StartTime.Format(time.RFC3339)  // ISO 8601 format
+	result["start"] = d.StartTime.Format(time.RFC3339)
 
 	if d.Parties != nil {
 		result["parties"] = d.Parties
@@ -191,58 +246,12 @@ func (d *Dialog) ToMap() map[string]interface{} {
 	if d.URL != "" {
 		result["url"] = d.URL
 	}
-	if !d.ContentHash.IsEmpty() {
-		if len(d.ContentHash) == 1 {
-			result["content_hash"] = d.ContentHash[0].String()
-		} else {
-			strs := make([]string, len(d.ContentHash))
-			for i, ch := range d.ContentHash {
-				strs[i] = ch.String()
-			}
-			result["content_hash"] = strs
-		}
-	}
+	d.addContentHashToMap(result)
 	if d.Disposition != "" {
 		result["disposition"] = d.Disposition
 	}
-
-	// Handle party history
-	if len(d.PartyHistory) > 0 {
-		partyHistory := make([]map[string]interface{}, len(d.PartyHistory))
-		for i, ph := range d.PartyHistory {
-			phMap := map[string]interface{}{
-				"party": ph.Party,
-				"event": ph.Event,
-				"time":  ph.Time.Format(time.RFC3339),
-			}
-			if ph.Button != "" {
-				phMap["button"] = ph.Button
-			}
-			partyHistory[i] = phMap
-		}
-		result["party_history"] = partyHistory
-	}
-
-	// Add transfer fields if present
-	if d.Transferee != 0 {
-		result["transferee"] = d.Transferee
-	}
-	if d.Transferor != 0 {
-		result["transferor"] = d.Transferor
-	}
-	if d.TransferTarget != nil && !d.TransferTarget.IsZero() {
-		result["transfer_target"] = d.TransferTarget.value
-	}
-	if d.Original != nil && !d.Original.IsZero() {
-		result["original"] = d.Original.value
-	}
-	if d.Consultation != nil && !d.Consultation.IsZero() {
-		result["consultation"] = d.Consultation.value
-	}
-	if d.TargetDialog != nil && !d.TargetDialog.IsZero() {
-		result["target_dialog"] = d.TargetDialog.value
-	}
-
+	d.addPartyHistoryToMap(result)
+	d.addTransferFieldsToMap(result)
 	if d.Duration > 0 {
 		result["duration"] = d.Duration
 	}

@@ -100,23 +100,23 @@ func TestValidComplexVCon(t *testing.T) {
 
 	// Add analysis for both calls
 	transcriptIdx := v.AddAnalysis(vcon.Analysis{
-		Type:       "transcript",
-		Dialog:     []int{initialCallIdx, followupDialogIdx},
-		MediaType:  "text/plain",
-		Vendor:     "TranscriptCo",
-		Product:    "AutoTranscribe v1.0",
-		Body:       "Customer: Hello, I'm having an issue...\nAgent: Let me transfer you...",
-		Encoding:   "none",
+		Type:      "transcript",
+		Dialog:    []int{initialCallIdx, followupDialogIdx},
+		MediaType: "text/plain",
+		Vendor:    "TranscriptCo",
+		Product:   "AutoTranscribe v1.0",
+		Body:      "Customer: Hello, I'm having an issue...\nAgent: Let me transfer you...",
+		Encoding:  "none",
 	})
 
 	sentimentIdx := v.AddAnalysis(vcon.Analysis{
-		Type:       "sentiment",
-		Dialog:     []int{initialCallIdx},
-		MediaType:  "application/json",
-		Vendor:     "EmotionAI",
-		Product:    "SentimentAnalyzer v2.1",
-		Body:       `{"overall": "neutral", "customer": "frustrated", "agent": "helpful"}`,
-		Encoding:   "json",
+		Type:      "sentiment",
+		Dialog:    []int{initialCallIdx},
+		MediaType: "application/json",
+		Vendor:    "EmotionAI",
+		Product:   "SentimentAnalyzer v2.1",
+		Body:      `{"overall": "neutral", "customer": "frustrated", "agent": "helpful"}`,
+		Encoding:  "json",
 	})
 
 	// Validate the complex VCon

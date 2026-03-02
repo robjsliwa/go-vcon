@@ -33,8 +33,8 @@ func (e CCExtension) DialogParams() []string {
 }
 
 func (e CCExtension) AnalysisParams() []string   { return nil }
-func (e CCExtension) AttachmentParams() []string  { return nil }
-func (e CCExtension) VConParams() []string        { return nil }
+func (e CCExtension) AttachmentParams() []string { return nil }
+func (e CCExtension) VConParams() []string       { return nil }
 
 // Register adds the CC extension to the given registry.
 func Register(r *vcon.ExtensionRegistry) {

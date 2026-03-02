@@ -13,7 +13,7 @@ func TestRunEmail(t *testing.T) {
 	// Reset global variables for testing
 	originalGlobalDomain := globalDomain
 	originalVConOut := vConOut
-	
+
 	defer func() {
 		globalDomain = originalGlobalDomain
 		vConOut = originalVConOut
@@ -131,7 +131,7 @@ func TestRunEmailIntegration(t *testing.T) {
 	// Save original values
 	originalGlobalDomain := globalDomain
 	originalVConOut := vConOut
-	
+
 	defer func() {
 		globalDomain = originalGlobalDomain
 		vConOut = originalVConOut
@@ -160,7 +160,7 @@ func TestRunEmailIntegration(t *testing.T) {
 	}
 
 	contentStr := string(content)
-	
+
 	// Check for basic vCon structure
 	expectedStrings := []string{
 		"\"vcon\":",
@@ -220,7 +220,7 @@ to test the email parsing functionality.
 	// Save original values
 	originalGlobalDomain := globalDomain
 	originalVConOut := vConOut
-	
+
 	defer func() {
 		globalDomain = originalGlobalDomain
 		vConOut = originalVConOut

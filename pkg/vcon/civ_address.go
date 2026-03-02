@@ -44,118 +44,49 @@ func NewCivicAddress() *CivicAddress {
 	return &CivicAddress{}
 }
 
+type civicField struct {
+	key string
+	val *string
+}
+
+func (c *CivicAddress) fields() []civicField {
+	return []civicField{
+		{"country", &c.Country},
+		{"a1", &c.A1},
+		{"a2", &c.A2},
+		{"a3", &c.A3},
+		{"a4", &c.A4},
+		{"a5", &c.A5},
+		{"a6", &c.A6},
+		{"prd", &c.PRD},
+		{"pod", &c.POD},
+		{"sts", &c.STS},
+		{"hno", &c.HNO},
+		{"hns", &c.HNS},
+		{"lmk", &c.LMK},
+		{"loc", &c.LOC},
+		{"flr", &c.FLR},
+		{"nam", &c.NAM},
+		{"pc", &c.PC},
+	}
+}
+
 // ToMap converts the CivicAddress object to a map, excluding empty fields.
-// This is similar to the Python to_dict() method.
 func (c *CivicAddress) ToMap() map[string]string {
 	result := make(map[string]string)
-	
-	// Only include non-empty fields in the map
-	if c.Country != "" {
-		result["country"] = c.Country
+	for _, f := range c.fields() {
+		if *f.val != "" {
+			result[f.key] = *f.val
+		}
 	}
-	if c.A1 != "" {
-		result["a1"] = c.A1
-	}
-	if c.A2 != "" {
-		result["a2"] = c.A2
-	}
-	if c.A3 != "" {
-		result["a3"] = c.A3
-	}
-	if c.A4 != "" {
-		result["a4"] = c.A4
-	}
-	if c.A5 != "" {
-		result["a5"] = c.A5
-	}
-	if c.A6 != "" {
-		result["a6"] = c.A6
-	}
-	if c.PRD != "" {
-		result["prd"] = c.PRD
-	}
-	if c.POD != "" {
-		result["pod"] = c.POD
-	}
-	if c.STS != "" {
-		result["sts"] = c.STS
-	}
-	if c.HNO != "" {
-		result["hno"] = c.HNO
-	}
-	if c.HNS != "" {
-		result["hns"] = c.HNS
-	}
-	if c.LMK != "" {
-		result["lmk"] = c.LMK
-	}
-	if c.LOC != "" {
-		result["loc"] = c.LOC
-	}
-	if c.FLR != "" {
-		result["flr"] = c.FLR
-	}
-	if c.NAM != "" {
-		result["nam"] = c.NAM
-	}
-	if c.PC != "" {
-		result["pc"] = c.PC
-	}
-	
 	return result
 }
 
 // SetFromMap sets CivicAddress fields from a map of strings.
 func (c *CivicAddress) SetFromMap(data map[string]string) {
-	if country, ok := data["country"]; ok {
-		c.Country = country
-	}
-	if a1, ok := data["a1"]; ok {
-		c.A1 = a1
-	}
-	if a2, ok := data["a2"]; ok {
-		c.A2 = a2
-	}
-	if a3, ok := data["a3"]; ok {
-		c.A3 = a3
-	}
-	if a4, ok := data["a4"]; ok {
-		c.A4 = a4
-	}
-	if a5, ok := data["a5"]; ok {
-		c.A5 = a5
-	}
-	if a6, ok := data["a6"]; ok {
-		c.A6 = a6
-	}
-	if prd, ok := data["prd"]; ok {
-		c.PRD = prd
-	}
-	if pod, ok := data["pod"]; ok {
-		c.POD = pod
-	}
-	if sts, ok := data["sts"]; ok {
-		c.STS = sts
-	}
-	if hno, ok := data["hno"]; ok {
-		c.HNO = hno
-	}
-	if hns, ok := data["hns"]; ok {
-		c.HNS = hns
-	}
-	if lmk, ok := data["lmk"]; ok {
-		c.LMK = lmk
-	}
-	if loc, ok := data["loc"]; ok {
-		c.LOC = loc
-	}
-	if flr, ok := data["flr"]; ok {
-		c.FLR = flr
-	}
-	if nam, ok := data["nam"]; ok {
-		c.NAM = nam
-	}
-	if pc, ok := data["pc"]; ok {
-		c.PC = pc
+	for _, f := range c.fields() {
+		if v, ok := data[f.key]; ok {
+			*f.val = v
+		}
 	}
 }

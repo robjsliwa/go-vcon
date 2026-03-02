@@ -148,24 +148,26 @@ func (p *Party) ToMap() map[string]interface{} {
 
 // SetFromMap sets Party fields from a map
 func (p *Party) SetFromMap(data map[string]interface{}) {
-	if v, ok := data["tel"].(string); ok {
-		p.Tel = v
+	stringFields := []struct {
+		key string
+		dst *string
+	}{
+		{"tel", &p.Tel},
+		{"stir", &p.Stir},
+		{"mailto", &p.Mailto},
+		{"name", &p.Name},
+		{"validation", &p.Validation},
+		{"gmlpos", &p.GmlPos},
+		{"uuid", &p.UUID},
+		{"sip", &p.Sip},
+		{"did", &p.Did},
 	}
-	if v, ok := data["stir"].(string); ok {
-		p.Stir = v
+	for _, f := range stringFields {
+		if v, ok := data[f.key].(string); ok {
+			*f.dst = v
+		}
 	}
-	if v, ok := data["mailto"].(string); ok {
-		p.Mailto = v
-	}
-	if v, ok := data["name"].(string); ok {
-		p.Name = v
-	}
-	if v, ok := data["validation"].(string); ok {
-		p.Validation = v
-	}
-	if v, ok := data["gmlpos"].(string); ok {
-		p.GmlPos = v
-	}
+
 	if v, ok := data["civicaddress"].(map[string]interface{}); ok {
 		civicAddressMap := make(map[string]string)
 		for k, val := range v {
@@ -177,15 +179,6 @@ func (p *Party) SetFromMap(data map[string]interface{}) {
 			p.CivicAddress = NewCivicAddress()
 		}
 		p.CivicAddress.SetFromMap(civicAddressMap)
-	}
-	if v, ok := data["uuid"].(string); ok {
-		p.UUID = v
-	}
-	if v, ok := data["sip"].(string); ok {
-		p.Sip = v
-	}
-	if v, ok := data["did"].(string); ok {
-		p.Did = v
 	}
 }
 

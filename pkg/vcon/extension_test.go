@@ -15,13 +15,13 @@ type testExtension struct {
 	dialogParams []string
 }
 
-func (e testExtension) Name() string            { return e.name }
-func (e testExtension) IsCompatible() bool       { return e.compatible }
-func (e testExtension) PartyParams() []string    { return e.partyParams }
-func (e testExtension) DialogParams() []string   { return e.dialogParams }
-func (e testExtension) AnalysisParams() []string { return nil }
+func (e testExtension) Name() string               { return e.name }
+func (e testExtension) IsCompatible() bool         { return e.compatible }
+func (e testExtension) PartyParams() []string      { return e.partyParams }
+func (e testExtension) DialogParams() []string     { return e.dialogParams }
+func (e testExtension) AnalysisParams() []string   { return nil }
 func (e testExtension) AttachmentParams() []string { return nil }
-func (e testExtension) VConParams() []string     { return nil }
+func (e testExtension) VConParams() []string       { return nil }
 
 func TestExtensionRegistryRegisterAndGet(t *testing.T) {
 	r := NewExtensionRegistry()

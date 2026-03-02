@@ -26,7 +26,9 @@ type EncryptedVCon struct {
 // Sign generates a General‑JSON JWS with detached payload.
 func (v *VCon) Sign(signer crypto.Signer, chain []*x509.Certificate) (*SignedVCon, error) {
 	payload, err := Canonicalise(v)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	// embed x5c
 	var x5c []string
@@ -39,13 +41,19 @@ func (v *VCon) Sign(signer crypto.Signer, chain []*x509.Certificate) (*SignedVCo
 			WithContentType("application/vcon").
 			WithHeader("x5c", x5c).
 			WithHeader("uuid", v.UUID))
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	obj, err := j.Sign(payload)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	general := obj.FullSerialize()
 	var gen map[string]any
-	if err = json.Unmarshal([]byte(general), &gen); err != nil { return nil, err }
+	if err = json.Unmarshal([]byte(general), &gen); err != nil {
+		return nil, err
+	}
 	gen["payload"] = base64.RawURLEncoding.EncodeToString(payload)
 
 	return &SignedVCon{JSON: gen}, nil
@@ -114,7 +122,6 @@ func (sv *SignedVCon) Verify(rootPool *x509.CertPool) (*VCon, error) {
 	return vc, nil
 }
 
-
 // Encrypt turns a *signed* vCon (General-JSON JWS in sv.JSON) into a
 // complete-serialization JWE.
 func (sv *SignedVCon) Encrypt(rcpts []jose.Recipient) (*EncryptedVCon, error) {
@@ -127,7 +134,9 @@ func (sv *SignedVCon) Encrypt(rcpts []jose.Recipient) (*EncryptedVCon, error) {
 		return nil, fmt.Errorf("canonicalise signed vCon: %w", err)
 	}
 
-	var tmp struct{ UUID string `json:"uuid"` }
+	var tmp struct {
+		UUID string `json:"uuid"`
+	}
 	if err := json.Unmarshal(plain, &tmp); err != nil {
 		return nil, fmt.Errorf("extract uuid: %w", err)
 	}

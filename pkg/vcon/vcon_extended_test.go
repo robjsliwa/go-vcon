@@ -7,16 +7,16 @@ import (
 
 func TestProcessProperties(t *testing.T) {
 	testObj := map[string]interface{}{
-		"allowed_prop":     "value1",
-		"another_allowed":  "value2",
-		"non_standard":     "value3",
-		"custom_field":     "value4",
+		"allowed_prop":    "value1",
+		"another_allowed": "value2",
+		"non_standard":    "value3",
+		"custom_field":    "value4",
 	}
 
 	allowedProps := map[string]struct{}{
 		"allowed_prop":    {},
 		"another_allowed": {},
-		"meta":           {},
+		"meta":            {},
 	}
 
 	tests := []struct {
@@ -327,8 +327,8 @@ func TestProcessPropertiesWithNilInput(t *testing.T) {
 
 func TestProcessPropertiesWithExistingMeta(t *testing.T) {
 	testObj := map[string]interface{}{
-		"allowed_prop":  "value1",
-		"custom_field":  "value2",
+		"allowed_prop": "value1",
+		"custom_field": "value2",
 		"meta": map[string]interface{}{
 			"existing_meta": "existing_value",
 		},
@@ -336,7 +336,7 @@ func TestProcessPropertiesWithExistingMeta(t *testing.T) {
 
 	allowedProps := map[string]struct{}{
 		"allowed_prop": {},
-		"meta":        {},
+		"meta":         {},
 	}
 
 	result := ProcessProperties(testObj, allowedProps, PropertyHandlingMeta)
