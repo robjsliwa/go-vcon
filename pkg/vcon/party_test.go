@@ -17,6 +17,8 @@ func TestPartyEventType(t *testing.T) {
 		{PartyEventUnhold, "unhold"},
 		{PartyEventMute, "mute"},
 		{PartyEventUnmute, "unmute"},
+		{PartyEventKeydown, "keydown"},
+		{PartyEventKeyup, "keyup"},
 	}
 
 	for _, tt := range tests {
@@ -30,12 +32,12 @@ func TestPartyEventType(t *testing.T) {
 
 func TestPartyJSONSerialization(t *testing.T) {
 	party := Party{
-		Tel:      "tel:+15551234567",
-		Mailto:   "mailto:alice@example.com",
-		Name:     "Alice Smith",
-		Role:     "originator",
-		UUID:     "test-uuid-123",
-		Timezone: "America/New_York",
+		Tel:    "tel:+15551234567",
+		Mailto: "mailto:alice@example.com",
+		Name:   "Alice Smith",
+		UUID:   "test-uuid-123",
+		Sip:    "sip:alice@example.com",
+		Did:    "did:example:123",
 	}
 
 	// Test marshaling
@@ -49,9 +51,9 @@ func TestPartyJSONSerialization(t *testing.T) {
 		`"tel":"tel:+15551234567"`,
 		`"mailto":"mailto:alice@example.com"`,
 		`"name":"Alice Smith"`,
-		`"role":"originator"`,
 		`"uuid":"test-uuid-123"`,
-		`"timezone":"America/New_York"`,
+		`"sip":"sip:alice@example.com"`,
+		`"did":"did:example:123"`,
 	}
 
 	for _, expected := range expectedFields {
@@ -74,6 +76,12 @@ func TestPartyJSONSerialization(t *testing.T) {
 	}
 	if unmarshaled.Name != party.Name {
 		t.Errorf("expected Name %s, got %s", party.Name, unmarshaled.Name)
+	}
+	if unmarshaled.Sip != party.Sip {
+		t.Errorf("expected Sip %s, got %s", party.Sip, unmarshaled.Sip)
+	}
+	if unmarshaled.Did != party.Did {
+		t.Errorf("expected Did %s, got %s", party.Did, unmarshaled.Did)
 	}
 }
 
@@ -127,7 +135,7 @@ func TestPartyOmitEmpty(t *testing.T) {
 	// These fields should not be present when empty
 	unwantedFields := []string{
 		"tel", "stir", "mailto", "validation", "gmlpos",
-		"civicaddress", "timezone", "uuid", "role", "contact_list",
+		"civicaddress", "uuid", "sip", "did",
 	}
 
 	for _, unwanted := range unwantedFields {
@@ -182,6 +190,32 @@ func TestPartyHistory(t *testing.T) {
 	}
 }
 
+func TestPartyHistoryWithButton(t *testing.T) {
+	ph := PartyHistory{
+		Party:  0,
+		Event:  string(PartyEventKeydown),
+		Time:   time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC),
+		Button: "5",
+	}
+
+	jsonData, err := json.Marshal(ph)
+	if err != nil {
+		t.Fatalf("failed to marshal party history with button: %v", err)
+	}
+
+	var unmarshaled PartyHistory
+	if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+		t.Fatalf("failed to unmarshal party history with button: %v", err)
+	}
+
+	if unmarshaled.Button != "5" {
+		t.Errorf("expected button 5, got %s", unmarshaled.Button)
+	}
+	if unmarshaled.Event != string(PartyEventKeydown) {
+		t.Errorf("expected event keydown, got %s", unmarshaled.Event)
+	}
+}
+
 func TestPartyValidation(t *testing.T) {
 	// Test that parties with different validation states work correctly
 	parties := []Party{
@@ -225,73 +259,37 @@ func TestPartyValidation(t *testing.T) {
 	}
 }
 
-func TestPartyContactList(t *testing.T) {
+func TestPartySipAndDid(t *testing.T) {
 	party := Party{
-		Name:        "Conference Organizer",
-		ContactList: "participants.json",
-		Role:        "moderator",
+		Name: "SIP/DID User",
+		Sip:  "sip:user@example.com",
+		Did:  "did:web:example.com",
 	}
 
 	jsonData, err := json.Marshal(party)
 	if err != nil {
-		t.Fatalf("failed to marshal party with contact list: %v", err)
+		t.Fatalf("failed to marshal party with sip/did: %v", err)
 	}
 
 	var unmarshaled Party
 	if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
-		t.Fatalf("failed to unmarshal party with contact list: %v", err)
+		t.Fatalf("failed to unmarshal party with sip/did: %v", err)
 	}
 
-	if unmarshaled.ContactList != party.ContactList {
-		t.Errorf("expected ContactList %s, got %s", party.ContactList, unmarshaled.ContactList)
+	if unmarshaled.Sip != party.Sip {
+		t.Errorf("expected Sip %s, got %s", party.Sip, unmarshaled.Sip)
 	}
 
-	if unmarshaled.Role != party.Role {
-		t.Errorf("expected Role %s, got %s", party.Role, unmarshaled.Role)
-	}
-}
-
-func TestPartyRoles(t *testing.T) {
-	// Test common party roles
-	roles := []string{
-		"originator",
-		"recipient",
-		"moderator",
-		"participant",
-		"observer",
-		"cc",
-		"bcc",
-	}
-
-	for _, role := range roles {
-		party := Party{
-			Name: "Test User",
-			Role: role,
-		}
-
-		jsonData, err := json.Marshal(party)
-		if err != nil {
-			t.Errorf("failed to marshal party with role %s: %v", role, err)
-			continue
-		}
-
-		var unmarshaled Party
-		if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
-			t.Errorf("failed to unmarshal party with role %s: %v", role, err)
-			continue
-		}
-
-		if unmarshaled.Role != role {
-			t.Errorf("expected role %s, got %s", role, unmarshaled.Role)
-		}
+	if unmarshaled.Did != party.Did {
+		t.Errorf("expected Did %s, got %s", party.Did, unmarshaled.Did)
 	}
 }
 
 // Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
-		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || 
-		containsSubstring(s, substr))))
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+			containsSubstring(s, substr))))
 }
 
 func containsSubstring(s, substr string) bool {

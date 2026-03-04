@@ -22,14 +22,18 @@ var audioCmd = &cobra.Command{
 
 func runAudio(cmd *cobra.Command, _ []string) error {
 	path, cleanup, err := fetchIfRemote(audioInput)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer cleanup()
 
 	info, err := ffprobe.GetProbeData(path, 10*time.Second)
-	if err != nil { return fmt.Errorf("ffprobe: %w", err) }
+	if err != nil {
+		return fmt.Errorf("ffprobe: %w", err)
+	}
 
 	v := vcon.New(globalDomain)
-	v.Subject   = filepath.Base(path)
+	v.Subject = filepath.Base(path)
 	v.CreatedAt = getDate(audioDate, path)
 
 	var dialogParties []int

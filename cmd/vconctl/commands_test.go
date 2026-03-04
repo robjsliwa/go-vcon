@@ -322,16 +322,16 @@ func TestDieFunction(t *testing.T) {
 func TestCommandIntegration(t *testing.T) {
 	// Test that the root command includes all expected subcommands
 	rootCmd.SetArgs([]string{"--help"})
-	
+
 	// Verify convert command has subcommands
 	convertSubcommands := convertCmd.Commands()
 	expectedSubcommands := []string{"audio", "email", "zoom"}
-	
+
 	subcommandNames := make([]string, len(convertSubcommands))
 	for i, cmd := range convertSubcommands {
 		subcommandNames[i] = cmd.Name()
 	}
-	
+
 	for _, expected := range expectedSubcommands {
 		found := false
 		for _, actual := range subcommandNames {

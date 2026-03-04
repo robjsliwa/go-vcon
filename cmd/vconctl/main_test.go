@@ -114,7 +114,7 @@ func TestGetDate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := getDate(tt.flag, tt.path)
-			
+
 			if tt.name == "no flag no file uses now" {
 				// Check that the result is within the last few seconds
 				now := time.Now()

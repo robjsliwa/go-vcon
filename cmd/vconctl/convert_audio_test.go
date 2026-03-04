@@ -20,14 +20,14 @@ func TestRunAudio(t *testing.T) {
 	if !checkFFProbeAvailable() {
 		t.Skip("ffprobe not available in PATH - skipping audio conversion tests")
 	}
-	
+
 	// Reset global variables for testing
 	originalGlobalDomain := globalDomain
 	originalAudioInput := audioInput
 	originalAudioParties := audioParties
 	originalAudioDate := audioDate
 	originalVConOut := vConOut
-	
+
 	defer func() {
 		globalDomain = originalGlobalDomain
 		audioInput = originalAudioInput
@@ -150,7 +150,7 @@ func TestRunAudioIntegration(t *testing.T) {
 	originalAudioParties := audioParties
 	originalAudioDate := audioDate
 	originalVConOut := vConOut
-	
+
 	defer func() {
 		globalDomain = originalGlobalDomain
 		audioInput = originalAudioInput
@@ -202,35 +202,35 @@ func TestRunAudioIntegration(t *testing.T) {
 func TestRunAudioWithoutFFProbe(t *testing.T) {
 	// Create a temporary test that simulates missing ffprobe
 	// by overriding the checkFFProbeAvailable function behavior
-	
-	// Save original function (we can't actually override it easily in Go, 
+
+	// Save original function (we can't actually override it easily in Go,
 	// so we'll just test that the logic would work)
-	
+
 	// Test what would happen if ffprobe was not available
 	// This simulates the GitHub Actions environment
-	
+
 	// Create a function that simulates ffprobe not being available
 	oldPath := os.Getenv("PATH")
 	defer func() {
 		os.Setenv("PATH", oldPath)
 	}()
-	
+
 	// Set PATH to a directory that doesn't contain ffprobe
 	tempDir := t.TempDir()
 	os.Setenv("PATH", tempDir)
-	
+
 	// Now test that checkFFProbeAvailable returns false
 	if checkFFProbeAvailable() {
 		t.Error("Expected checkFFProbeAvailable to return false with empty PATH")
 	}
-	
+
 	t.Log("Successfully verified that checkFFProbeAvailable returns false when ffprobe is not in PATH")
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
-		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || 
-		containsSubstring(s, substr))))
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+			containsSubstring(s, substr))))
 }
 
 func containsSubstring(s, substr string) bool {

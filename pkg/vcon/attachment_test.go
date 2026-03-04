@@ -37,10 +37,10 @@ func TestNewAttachment(t *testing.T) {
 		expectedType string
 	}{
 		{
-			name:         "valid base64 encoding",
+			name:         "valid base64url encoding",
 			attachType:   "document",
-			body:         "SGVsbG8gV29ybGQ=",
-			encoding:     "base64",
+			body:         "SGVsbG8gV29ybGQ",
+			encoding:     "base64url",
 			expectError:  false,
 			expectedType: "document",
 		},
@@ -67,12 +67,19 @@ func TestNewAttachment(t *testing.T) {
 			expectError:  false,
 			expectedType: "tags",
 		},
+		{
+			name:        "base64 encoding is no longer valid",
+			attachType:  "document",
+			body:        "SGVsbG8gV29ybGQ=",
+			encoding:    "base64",
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			attachment, err := NewAttachment(tt.attachType, tt.body, tt.encoding)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -97,8 +104,8 @@ func TestNewAttachment(t *testing.T) {
 }
 
 func TestValidAttachmentEncodings(t *testing.T) {
-	expected := []string{"base64", "base64url", "json", "none"}
-	
+	expected := []string{"base64url", "json", "none"}
+
 	if len(ValidAttachmentEncodings) != len(expected) {
 		t.Errorf("expected %d valid encodings, got %d", len(expected), len(ValidAttachmentEncodings))
 	}
@@ -119,7 +126,7 @@ func TestValidAttachmentEncodings(t *testing.T) {
 
 func TestAttachmentSerialization(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	attachment := Attachment{
 		Body:        "test content",
 		Encoding:    "none",
@@ -128,7 +135,8 @@ func TestAttachmentSerialization(t *testing.T) {
 		StartTime:   startTime,
 		MediaType:   "text/plain",
 		Filename:    "test.txt",
-		ContentHash: "sha256hash",
+		ContentHash: ContentHashList{{Algorithm: "sha512", Hash: "abc123"}},
+		Purpose:     "transcript",
 	}
 
 	// Test marshaling
@@ -166,11 +174,15 @@ func TestAttachmentSerialization(t *testing.T) {
 	if unmarshaled.Filename != attachment.Filename {
 		t.Errorf("expected filename %s, got %s", attachment.Filename, unmarshaled.Filename)
 	}
+
+	if unmarshaled.Purpose != attachment.Purpose {
+		t.Errorf("expected purpose %s, got %s", attachment.Purpose, unmarshaled.Purpose)
+	}
 }
 
 func TestAttachmentWithURL(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	attachment := Attachment{
 		URL:         "https://example.com/document.pdf",
 		DialogIdx:   0,
@@ -178,7 +190,7 @@ func TestAttachmentWithURL(t *testing.T) {
 		StartTime:   startTime,
 		MediaType:   "application/pdf",
 		Filename:    "document.pdf",
-		ContentHash: "sha256hash",
+		ContentHash: ContentHashList{{Algorithm: "sha512", Hash: "xyz789"}},
 	}
 
 	// Test marshaling
@@ -203,52 +215,9 @@ func TestAttachmentWithURL(t *testing.T) {
 	}
 }
 
-func TestAttachmentWithMeta(t *testing.T) {
-	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
-	meta := map[string]interface{}{
-		"custom_field": "custom_value",
-		"priority":     "high",
-		"tags":         []string{"important", "document"},
-	}
-
-	attachment := Attachment{
-		Body:      "content",
-		Encoding:  "none",
-		PartyIdx:  0,
-		StartTime: startTime,
-		Meta:      meta,
-	}
-
-	// Test marshaling
-	jsonData, err := json.Marshal(attachment)
-	if err != nil {
-		t.Fatalf("failed to marshal attachment with meta: %v", err)
-	}
-
-	// Test unmarshaling
-	var unmarshaled Attachment
-	if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
-		t.Fatalf("failed to unmarshal attachment with meta: %v", err)
-	}
-
-	if unmarshaled.Meta == nil {
-		t.Fatal("expected meta to be preserved")
-	}
-
-	metaMap, ok := unmarshaled.Meta.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected meta to be a map, got %T", unmarshaled.Meta)
-	}
-
-	if metaMap["custom_field"] != "custom_value" {
-		t.Errorf("expected custom_field to be preserved in meta")
-	}
-}
-
 func TestAttachmentOmitEmpty(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
-	
+
 	// Minimal attachment with only required fields
 	attachment := Attachment{
 		PartyIdx:  0,
@@ -273,8 +242,8 @@ func TestAttachmentOmitEmpty(t *testing.T) {
 
 	// Optional fields should be omitted when empty
 	unwantedFields := []string{
-		"body", "encoding", "url", "content_hash", "dialog", 
-		"mediatype", "filename", "meta",
+		"body", "encoding", "url", "content_hash", "dialog",
+		"mediatype", "filename", "purpose",
 	}
 
 	for _, unwanted := range unwantedFields {
@@ -284,21 +253,21 @@ func TestAttachmentOmitEmpty(t *testing.T) {
 	}
 }
 
-func TestNewAttachmentWithBase64(t *testing.T) {
-	// Test creating attachment with base64-encoded content
-	base64Content := "SGVsbG8sIFdvcmxkIQ==" // base64 encoding of "Hello, World!"
+func TestNewAttachmentWithBase64URL(t *testing.T) {
+	// Test creating attachment with base64url-encoded content
+	base64urlContent := "SGVsbG8sIFdvcmxkIQ" // base64url encoding of "Hello, World!" (no padding)
 
-	attachment, err := NewAttachment(string(AttachmentTypeDocument), base64Content, "base64")
+	attachment, err := NewAttachment(string(AttachmentTypeDocument), base64urlContent, "base64url")
 	if err != nil {
-		t.Fatalf("failed to create base64 attachment: %v", err)
+		t.Fatalf("failed to create base64url attachment: %v", err)
 	}
 
-	if attachment.Body != base64Content {
-		t.Errorf("expected body %s, got %s", base64Content, attachment.Body)
+	if attachment.Body != base64urlContent {
+		t.Errorf("expected body %s, got %s", base64urlContent, attachment.Body)
 	}
 
-	if attachment.Encoding != "base64" {
-		t.Errorf("expected encoding base64, got %s", attachment.Encoding)
+	if attachment.Encoding != "base64url" {
+		t.Errorf("expected encoding base64url, got %s", attachment.Encoding)
 	}
 }
 
@@ -330,8 +299,8 @@ func TestNewAttachmentWithJSON(t *testing.T) {
 }
 
 func TestAttachmentEncodingValidation(t *testing.T) {
-	validEncodings := []string{"base64", "base64url", "json", "none"}
-	invalidEncodings := []string{"base32", "hex", "invalid", ""}
+	validEncodings := []string{"base64url", "json", "none"}
+	invalidEncodings := []string{"base64", "base32", "hex", "invalid", ""}
 
 	for _, encoding := range validEncodings {
 		t.Run("valid_"+encoding, func(t *testing.T) {

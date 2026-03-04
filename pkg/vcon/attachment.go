@@ -8,7 +8,7 @@ import (
 )
 
 // ValidAttachmentEncodings defines the allowed encoding types for attachments
-var ValidAttachmentEncodings = []string{"base64", "base64url", "json", "none"}
+var ValidAttachmentEncodings = []string{"base64url", "json", "none"}
 
 // AttachmentType represents a specific type of attachment
 type AttachmentType string
@@ -24,16 +24,16 @@ const (
 
 // Attachment is a file linked to a dialog/party.
 type Attachment struct {
-	Body        string      `json:"body,omitempty"`
-	Encoding    string      `json:"encoding,omitempty"`
-	URL         string      `json:"url,omitempty"`
-	ContentHash string      `json:"content_hash,omitempty"`
-	DialogIdx   int         `json:"dialog,omitempty"`
-	PartyIdx    int         `json:"party"`
-	StartTime   time.Time   `json:"start"`
-	MediaType   string      `json:"mediatype,omitempty"`
-	Filename    string      `json:"filename,omitempty"`
-	Meta        interface{} `json:"meta,omitempty"`
+	Body        string          `json:"body,omitempty"`
+	Encoding    string          `json:"encoding,omitempty"`
+	URL         string          `json:"url,omitempty"`
+	ContentHash ContentHashList `json:"content_hash,omitempty"`
+	DialogIdx   int             `json:"dialog,omitempty"`
+	PartyIdx    int             `json:"party"`
+	StartTime   time.Time       `json:"start"`
+	MediaType   string          `json:"mediatype,omitempty"`
+	Filename    string          `json:"filename,omitempty"`
+	Purpose     string          `json:"purpose,omitempty"`
 }
 
 // NewAttachment creates a new Attachment with the specified type, body, and encoding
@@ -46,11 +46,11 @@ func NewAttachment(attachmentType string, body interface{}, encoding string) (*A
 			break
 		}
 	}
-	
+
 	if !validEncoding {
 		return nil, fmt.Errorf("invalid encoding: %s", encoding)
 	}
-	
+
 	// Convert body to string if it's not already
 	var bodyStr string
 	switch b := body.(type) {
@@ -68,28 +68,19 @@ func NewAttachment(attachmentType string, body interface{}, encoding string) (*A
 			bodyStr = fmt.Sprintf("%v", body)
 		}
 	}
-	
+
 	// Create the attachment
 	att := &Attachment{
 		Body:     bodyStr,
 		Encoding: encoding,
-		Meta:     make(map[string]interface{}),
 	}
-	
+
 	return att, nil
 }
 
 // GetBody retrieves the body content, converting from the encoded format if necessary
 func (a *Attachment) GetBody() (interface{}, error) {
 	switch a.Encoding {
-	case "base64":
-		// Decode base64 if needed
-		decoded, err := base64.StdEncoding.DecodeString(a.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode base64 body: %w", err)
-		}
-		return string(decoded), nil
-	
 	case "base64url":
 		// Decode base64url if needed
 		decoded, err := base64.URLEncoding.DecodeString(a.Body)
@@ -97,7 +88,7 @@ func (a *Attachment) GetBody() (interface{}, error) {
 			return nil, fmt.Errorf("failed to decode base64url body: %w", err)
 		}
 		return string(decoded), nil
-	
+
 	case "json":
 		// Parse JSON if needed
 		var result interface{}
@@ -105,7 +96,7 @@ func (a *Attachment) GetBody() (interface{}, error) {
 			return nil, fmt.Errorf("failed to parse JSON body: %w", err)
 		}
 		return result, nil
-	
+
 	default: // "none" or any other encoding
 		return a.Body, nil
 	}

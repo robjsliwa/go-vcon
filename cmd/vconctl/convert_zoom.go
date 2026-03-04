@@ -46,24 +46,26 @@ var zoomCmd = &cobra.Command{
 func runZoom(_ *cobra.Command, args []string) error {
 	folder := args[0]
 	meta, err := readZoomMeta(folder)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	v := vcon.New(globalDomain)
-	v.Subject   = meta.Topic
+	v.Subject = meta.Topic
 	v.CreatedAt = meta.Start
 
 	// host
-	v.Parties = append(v.Parties, vcon.Party{ Name: meta.Host, Mailto: meta.HostEmail, Role: "host" })
+	v.Parties = append(v.Parties, vcon.Party{Name: meta.Host, Mailto: meta.HostEmail})
 	// participants
 	for _, p := range meta.Participants {
-		v.Parties = append(v.Parties, vcon.Party{ Name: p.Name, Mailto: p.Email })
+		v.Parties = append(v.Parties, vcon.Party{Name: p.Name, Mailto: p.Email})
 	}
 
 	// main MP4 and VTT transcript become attachments
 	for _, f := range meta.Files {
 		att := vcon.Attachment{
-			Filename: f.Name,
-			URL:      f.Path,
+			Filename:  f.Name,
+			URL:       f.Path,
 			MediaType: f.Type,
 		}
 		v.Attachments = append(v.Attachments, att)

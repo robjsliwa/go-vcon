@@ -13,9 +13,9 @@ import (
 // fixtures loads the sample leaf key / leaf certificate / root CA that
 // live under testdata/keys/ and returns:
 //
-//   * rsa.PrivateKey  – the signer (leaf.key)
-//   * *x509.Certificate – the leaf certificate (leaf.crt)
-//   * *x509.CertPool    – a pool that contains the root CA (root.crt)
+//   - rsa.PrivateKey  – the signer (leaf.key)
+//   - *x509.Certificate – the leaf certificate (leaf.crt)
+//   - *x509.CertPool    – a pool that contains the root CA (root.crt)
 //
 // It calls t.Fatalf on any error so the caller doesn’t have to.
 func loadKeys(t *testing.T) (*rsa.PrivateKey, *x509.Certificate, *x509.CertPool) {

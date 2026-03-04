@@ -74,7 +74,7 @@ func TestCanonicaliseWithVCon(t *testing.T) {
 	}
 
 	canonicalStr := string(canonical)
-	
+
 	// Should be valid JSON
 	var parsed map[string]interface{}
 	if err := json.Unmarshal(canonical, &parsed); err != nil {
@@ -85,7 +85,7 @@ func TestCanonicaliseWithVCon(t *testing.T) {
 	if !strings.Contains(canonicalStr, `"created_at"`) {
 		t.Error("expected created_at field in canonical form")
 	}
-	
+
 	if !strings.Contains(canonicalStr, `"parties"`) {
 		t.Error("expected parties field in canonical form")
 	}
@@ -239,11 +239,11 @@ func TestCanonicaliseWithNumbers(t *testing.T) {
 func TestCanonicaliseWithStrings(t *testing.T) {
 	// Test canonicalization with various string types
 	input := map[string]interface{}{
-		"simple":      "hello",
-		"with_quotes": `say "hello"`,
+		"simple":       "hello",
+		"with_quotes":  `say "hello"`,
 		"with_newline": "line1\nline2",
 		"with_unicode": "café 🚀",
-		"empty":       "",
+		"empty":        "",
 	}
 
 	canonical, err := Canonicalise(input)
@@ -263,7 +263,7 @@ func TestCanonicaliseWithStrings(t *testing.T) {
 	if !strings.Contains(canonicalStr, `"hello"`) {
 		t.Error("expected simple string to be present")
 	}
-	
+
 	if !strings.Contains(canonicalStr, `"say \"hello\""`) {
 		t.Error("expected escaped quotes")
 	}

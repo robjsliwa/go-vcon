@@ -27,11 +27,11 @@ func TestNewCivicAddress(t *testing.T) {
 func TestCivicAddressSerialization(t *testing.T) {
 	addr := &CivicAddress{
 		Country: "US",
-		A1:      "CA", // State
+		A1:      "CA",            // State
 		A3:      "San Francisco", // City
-		PC:      "94105", // Postal code
-		STS:     "Main Street", // Street
-		HNO:     "123", // House number
+		PC:      "94105",         // Postal code
+		STS:     "Main Street",   // Street
+		HNO:     "123",           // House number
 	}
 
 	// Test marshaling
@@ -101,7 +101,7 @@ func TestCivicAddressOmitEmpty(t *testing.T) {
 
 	// Absent fields should not be present
 	unwantedFields := []string{
-		"a1", "a2", "a4", "a5", "a6", "prd", "pod", "sts", 
+		"a1", "a2", "a4", "a5", "a6", "prd", "pod", "sts",
 		"hno", "hns", "lmk", "loc", "flr", "nam", "pc",
 	}
 
@@ -115,21 +115,21 @@ func TestCivicAddressOmitEmpty(t *testing.T) {
 func TestCivicAddressToMap(t *testing.T) {
 	addr := &CivicAddress{
 		Country: "CA",
-		A1:      "ON", // Province
-		A3:      "Toronto", // City
-		PC:      "M5V 3M8", // Postal code
+		A1:      "ON",               // Province
+		A3:      "Toronto",          // City
+		PC:      "M5V 3M8",          // Postal code
 		STS:     "King Street West", // Street
-		HNO:     "290", // House number
-		FLR:     "15", // Floor
-		NAM:     "CN Tower Area", // Location name
+		HNO:     "290",              // House number
+		FLR:     "15",               // Floor
+		NAM:     "CN Tower Area",    // Location name
 	}
 
 	resultMap := addr.ToMap()
-	
+
 	expectedEntries := map[string]string{
 		"country": "CA",
 		"a1":      "ON",
-		"a3":      "Toronto", 
+		"a3":      "Toronto",
 		"pc":      "M5V 3M8",
 		"sts":     "King Street West",
 		"hno":     "290",
@@ -157,7 +157,7 @@ func TestCivicAddressToMap(t *testing.T) {
 func TestCivicAddressToMapWithEmptyAddress(t *testing.T) {
 	addr := NewCivicAddress()
 	resultMap := addr.ToMap()
-	
+
 	if len(resultMap) != 0 {
 		t.Errorf("expected empty map for empty address, got %d entries", len(resultMap))
 	}
@@ -319,14 +319,24 @@ func TestCivicAddressPartialData(t *testing.T) {
 
 			// ToMap should only include non-empty fields
 			resultMap := tt.addr.ToMap()
-			
+
 			// Count non-empty fields in original
 			expectedEntries := 0
-			if tt.addr.Country != "" { expectedEntries++ }
-			if tt.addr.A3 != "" { expectedEntries++ }
-			if tt.addr.STS != "" { expectedEntries++ }
-			if tt.addr.HNO != "" { expectedEntries++ }
-			if tt.addr.PC != "" { expectedEntries++ }
+			if tt.addr.Country != "" {
+				expectedEntries++
+			}
+			if tt.addr.A3 != "" {
+				expectedEntries++
+			}
+			if tt.addr.STS != "" {
+				expectedEntries++
+			}
+			if tt.addr.HNO != "" {
+				expectedEntries++
+			}
+			if tt.addr.PC != "" {
+				expectedEntries++
+			}
 
 			if len(resultMap) != expectedEntries {
 				t.Errorf("%s: expected %d entries in map, got %d", tt.name, expectedEntries, len(resultMap))
