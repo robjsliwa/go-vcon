@@ -178,7 +178,8 @@ func TestRunEmailIntegration(t *testing.T) {
 
 	// Check for email-specific content
 	emailSpecificStrings := []string{
-		"\"type\": \"email\"",
+		"\"type\": \"text\"",
+		"\"application\": \"email\"",
 		"\"mediatype\": \"text/plain\"",
 		"mailto:",
 	}

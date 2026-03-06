@@ -130,7 +130,7 @@ func TestAttachmentSerialization(t *testing.T) {
 	attachment := Attachment{
 		Body:        "test content",
 		Encoding:    "none",
-		DialogIdx:   1,
+		DialogIdx:   IntPtr(1),
 		PartyIdx:    0,
 		StartTime:   startTime,
 		MediaType:   "text/plain",
@@ -159,8 +159,8 @@ func TestAttachmentSerialization(t *testing.T) {
 		t.Errorf("expected encoding %s, got %s", attachment.Encoding, unmarshaled.Encoding)
 	}
 
-	if unmarshaled.DialogIdx != attachment.DialogIdx {
-		t.Errorf("expected dialog index %d, got %d", attachment.DialogIdx, unmarshaled.DialogIdx)
+	if unmarshaled.DialogIdx == nil || *unmarshaled.DialogIdx != *attachment.DialogIdx {
+		t.Errorf("expected dialog index %v, got %v", attachment.DialogIdx, unmarshaled.DialogIdx)
 	}
 
 	if unmarshaled.PartyIdx != attachment.PartyIdx {
@@ -185,7 +185,7 @@ func TestAttachmentWithURL(t *testing.T) {
 
 	attachment := Attachment{
 		URL:         "https://example.com/document.pdf",
-		DialogIdx:   0,
+		DialogIdx:   IntPtr(0),
 		PartyIdx:    1,
 		StartTime:   startTime,
 		MediaType:   "application/pdf",
@@ -218,9 +218,10 @@ func TestAttachmentWithURL(t *testing.T) {
 func TestAttachmentOmitEmpty(t *testing.T) {
 	startTime := time.Date(2023, 1, 15, 10, 30, 0, 0, time.UTC)
 
-	// Minimal attachment with only required fields
+	// Minimal attachment with required fields (dialog is now required by IETF schema)
 	attachment := Attachment{
 		PartyIdx:  0,
+		DialogIdx: IntPtr(0),
 		StartTime: startTime,
 	}
 
@@ -236,13 +237,17 @@ func TestAttachmentOmitEmpty(t *testing.T) {
 		t.Error("expected party index to be present")
 	}
 
+	if !strings.Contains(jsonStr, `"dialog":0`) {
+		t.Error("expected dialog index to be present")
+	}
+
 	if !strings.Contains(jsonStr, `"start":`) {
 		t.Error("expected start time to be present")
 	}
 
 	// Optional fields should be omitted when empty
 	unwantedFields := []string{
-		"body", "encoding", "url", "content_hash", "dialog",
+		"body", "encoding", "url", "content_hash",
 		"mediatype", "filename", "purpose",
 	}
 
@@ -318,5 +323,28 @@ func TestAttachmentEncodingValidation(t *testing.T) {
 				t.Errorf("expected invalid encoding %s to fail", encoding)
 			}
 		})
+	}
+}
+
+func TestAttachmentDialogRequired(t *testing.T) {
+	// Attachment missing "dialog" should fail schema validation via BuildFromJSON
+	jsonStr := `{
+		"vcon": "0.4.0",
+		"uuid": "550e8400-e29b-41d4-a716-446655440000",
+		"created_at": "2023-01-15T10:30:00Z",
+		"parties": [{"name": "Alice"}],
+		"dialog": [{"type": "recording", "start": "2023-01-15T10:30:00Z"}],
+		"attachments": [
+			{
+				"body": "data",
+				"encoding": "none",
+				"party": 0,
+				"start": "2023-01-15T10:30:00Z"
+			}
+		]
+	}`
+	_, err := BuildFromJSON(jsonStr)
+	if err == nil {
+		t.Error("expected error for attachment missing required 'dialog' field")
 	}
 }

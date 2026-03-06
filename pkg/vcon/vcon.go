@@ -97,10 +97,10 @@ type Analysis struct {
 	Dialog      interface{}     `json:"dialog,omitempty"`
 	MediaType   string          `json:"mediatype,omitempty"`
 	Filename    string          `json:"filename,omitempty"`
-	Vendor      string          `json:"vendor,omitempty"`
+	Vendor      string          `json:"vendor"`
 	Product     string          `json:"product,omitempty"`
-	Schema      interface{}     `json:"schema,omitempty"`
-	Body        interface{}     `json:"body,omitempty"`
+	Schema      string          `json:"schema,omitempty"`
+	Body        string          `json:"body,omitempty"`
 	Encoding    string          `json:"encoding,omitempty"`
 	URL         string          `json:"url,omitempty"`
 	ContentHash ContentHashList `json:"content_hash,omitempty"`
@@ -189,7 +189,24 @@ func New(domain string, propertyHandling ...string) *VCon {
 
 func validateAgainstSchema(rawMap map[string]interface{}) error {
 	compiler := jsonschema.NewCompiler()
-	compiler.DefaultDraft(jsonschema.Draft2020)
+	compiler.DefaultDraft(jsonschema.Draft7)
+	// Override the default email format validator to also accept mailto: URIs,
+	// since the vCon spec defines the mailto field as a MAILTO URL (RFC 6068).
+	compiler.RegisterFormat(&jsonschema.Format{
+		Name: "email",
+		Validate: func(v interface{}) error {
+			s, ok := v.(string)
+			if !ok {
+				return nil
+			}
+			s = strings.TrimPrefix(s, "mailto:")
+			parts := strings.SplitN(s, "@", 2)
+			if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+				return fmt.Errorf("invalid email: %s", v)
+			}
+			return nil
+		},
+	})
 
 	var schemaData interface{}
 	if err := json.Unmarshal(vconSchema, &schemaData); err != nil {
@@ -339,11 +356,19 @@ func migrateV003ToV040(m map[string]interface{}) {
 	migrateSliceItems(m, "attachments", func(am map[string]interface{}) {
 		delete(am, "meta")
 		migrateEncodingAndHash(am)
+		// "dialog" is now required by the IETF schema
+		if _, ok := am["dialog"]; !ok {
+			am["dialog"] = float64(0)
+		}
 	})
 
 	migrateSliceItems(m, "analysis", func(am map[string]interface{}) {
 		delete(am, "meta")
 		migrateEncodingAndHash(am)
+		// "vendor" is now required by the IETF schema
+		if _, ok := am["vendor"]; !ok || am["vendor"] == "" {
+			am["vendor"] = "unknown"
+		}
 	})
 }
 
@@ -646,12 +671,27 @@ func (v *VCon) validateDialogs() []string {
 func (v *VCon) validateAnalysis() []string {
 	var errs []string
 	for i, analysis := range v.Analysis {
+		if analysis.Vendor == "" {
+			errs = append(errs, fmt.Sprintf("analysis at index %d missing required field: vendor", i))
+		}
 		if dialogs, ok := analysis.Dialog.([]int); ok {
 			for _, dialogIdx := range dialogs {
 				if dialogIdx < 0 || dialogIdx >= len(v.Dialog) {
 					errs = append(errs, fmt.Sprintf("analysis at index %d references invalid dialog index: %d", i, dialogIdx))
 				}
 			}
+		}
+	}
+	return errs
+}
+
+func (v *VCon) validateAttachments() []string {
+	var errs []string
+	for i, att := range v.Attachments {
+		if att.DialogIdx == nil {
+			errs = append(errs, fmt.Sprintf("attachment at index %d missing required field: dialog", i))
+		} else if *att.DialogIdx < 0 || *att.DialogIdx >= len(v.Dialog) {
+			errs = append(errs, fmt.Sprintf("attachment at index %d references invalid dialog index: %d", i, *att.DialogIdx))
 		}
 	}
 	return errs
@@ -664,6 +704,7 @@ func (v *VCon) allValidationErrors() []string {
 	errs = append(errs, v.validateCriticalExtensions()...)
 	errs = append(errs, v.validateDialogs()...)
 	errs = append(errs, v.validateAnalysis()...)
+	errs = append(errs, v.validateAttachments()...)
 	return errs
 }
 
