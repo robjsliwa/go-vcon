@@ -235,7 +235,7 @@ v.AddDialog(vcon.Dialog{
 })
 ```
 
-Dialog types: `"recording"`, `"text"`, `"transfer"`, `"incomplete"`, `"email"`, `"conference"`.
+Dialog types: `"recording"`, `"text"`, `"transfer"`, `"incomplete"`.
 
 Valid encodings: `"base64url"`, `"json"`, `"none"`.
 
@@ -262,7 +262,7 @@ Track participants joining, leaving, or being placed on hold during a dialog:
 
 ```go
 v.AddDialog(vcon.Dialog{
-    Type:      "conference",
+    Type:      "recording",
     StartTime: &startTime,
     Duration:  900.0,
     Parties:   []int{0, 1, 2},
@@ -310,7 +310,7 @@ Attachments are supplementary files associated with specific parties and time ra
 
 ```go
 v.AddAttachment(vcon.Attachment{
-    DialogIdx: 0,
+    DialogIdx: vcon.IntPtr(0),
     PartyIdx:  1,
     StartTime: time.Now().UTC(),
     MediaType: "application/pdf",

@@ -16,9 +16,13 @@ func TestDialogTypes(t *testing.T) {
 		{"text", true},
 		{"transfer", true},
 		{"incomplete", true},
+		// Note: The IETF schema restricts dialog type to the enum
+		// [recording, text, transfer, incomplete]. The following types
+		// are valid at the Go struct level but will fail schema validation
+		// via BuildFromJSON.
 		{"email", true},
 		{"chat", true},
-		{"invalid_type", true}, // Any string is valid for dialog type
+		{"invalid_type", true},
 	}
 
 	for _, tt := range tests {
@@ -254,7 +258,7 @@ func TestDialogWithPartyHistory(t *testing.T) {
 	}
 
 	dialog := Dialog{
-		Type:         "conference",
+		Type:         "recording", // Schema restricts to: recording, text, transfer, incomplete
 		StartTime:    &startTime,
 		Duration:     65.0,
 		Parties:      []int{0, 1},

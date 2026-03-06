@@ -28,12 +28,17 @@ type Attachment struct {
 	Encoding    string          `json:"encoding,omitempty"`
 	URL         string          `json:"url,omitempty"`
 	ContentHash ContentHashList `json:"content_hash,omitempty"`
-	DialogIdx   int             `json:"dialog,omitempty"`
+	DialogIdx   *int            `json:"dialog"`
 	PartyIdx    int             `json:"party"`
 	StartTime   time.Time       `json:"start"`
 	MediaType   string          `json:"mediatype,omitempty"`
 	Filename    string          `json:"filename,omitempty"`
 	Purpose     string          `json:"purpose,omitempty"`
+}
+
+// IntPtr returns a pointer to the given int value.
+func IntPtr(v int) *int {
+	return &v
 }
 
 // NewAttachment creates a new Attachment with the specified type, body, and encoding

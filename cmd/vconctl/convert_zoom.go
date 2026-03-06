@@ -67,6 +67,9 @@ func runZoom(_ *cobra.Command, args []string) error {
 			Filename:  f.Name,
 			URL:       f.Path,
 			MediaType: f.Type,
+			DialogIdx: vcon.IntPtr(0),
+			PartyIdx:  0,
+			StartTime: meta.Start,
 		}
 		v.Attachments = append(v.Attachments, att)
 	}

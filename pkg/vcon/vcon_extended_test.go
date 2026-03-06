@@ -458,17 +458,23 @@ func TestV003Migration(t *testing.T) {
 	// CC extension fields should be removed from dialog
 	// (campaign, interaction_type, interaction_id, skill are no longer on Dialog struct)
 
-	// Analysis encoding should be migrated
+	// Analysis encoding should be migrated, vendor should be set
 	if len(v.Analysis) != 1 {
 		t.Fatalf("expected 1 analysis, got %d", len(v.Analysis))
 	}
+	if v.Analysis[0].Vendor != "unknown" {
+		t.Errorf("expected analysis vendor 'unknown' after migration, got %s", v.Analysis[0].Vendor)
+	}
 
-	// Attachments encoding should be migrated
+	// Attachments encoding should be migrated, dialog should be set
 	if len(v.Attachments) != 1 {
 		t.Fatalf("expected 1 attachment, got %d", len(v.Attachments))
 	}
 	if v.Attachments[0].Encoding != "base64url" {
 		t.Errorf("expected attachment encoding base64url after migration, got %s", v.Attachments[0].Encoding)
+	}
+	if v.Attachments[0].DialogIdx == nil || *v.Attachments[0].DialogIdx != 0 {
+		t.Errorf("expected attachment dialog index 0 after migration, got %v", v.Attachments[0].DialogIdx)
 	}
 }
 
@@ -489,5 +495,57 @@ func TestV003MigrationFromFile(t *testing.T) {
 		if d.Encoding == "base64" {
 			t.Errorf("dialog[%d] encoding should not be 'base64' after migration", i)
 		}
+	}
+}
+
+func TestAnalysisVendorRequired(t *testing.T) {
+	// Analysis missing "vendor" should fail schema validation via BuildFromJSON
+	jsonStr := `{
+		"vcon": "0.4.0",
+		"uuid": "550e8400-e29b-41d4-a716-446655440000",
+		"created_at": "2023-01-15T10:30:00Z",
+		"parties": [{"name": "Alice"}],
+		"analysis": [
+			{
+				"type": "sentiment",
+				"body": "positive",
+				"encoding": "none"
+			}
+		]
+	}`
+	_, err := BuildFromJSON(jsonStr)
+	if err == nil {
+		t.Error("expected error for analysis missing required 'vendor' field")
+	}
+}
+
+func TestDialogTypeEnumSchemaValidation(t *testing.T) {
+	// Dialog with invalid type should fail schema validation
+	invalidJSON := `{
+		"vcon": "0.4.0",
+		"uuid": "550e8400-e29b-41d4-a716-446655440000",
+		"created_at": "2023-01-15T10:30:00Z",
+		"parties": [{"name": "Alice"}],
+		"dialog": [{"type": "email", "start": "2023-01-15T10:30:00Z"}]
+	}`
+	_, err := BuildFromJSON(invalidJSON)
+	if err == nil {
+		t.Error("expected error for dialog with invalid type 'email'")
+	}
+
+	// Dialog with valid type should pass
+	validJSON := `{
+		"vcon": "0.4.0",
+		"uuid": "550e8400-e29b-41d4-a716-446655440000",
+		"created_at": "2023-01-15T10:30:00Z",
+		"parties": [{"name": "Alice"}],
+		"dialog": [{"type": "recording", "start": "2023-01-15T10:30:00Z"}]
+	}`
+	v, err := BuildFromJSON(validJSON)
+	if err != nil {
+		t.Errorf("expected no error for valid dialog type, got: %v", err)
+	}
+	if v != nil && len(v.Dialog) > 0 && v.Dialog[0].Type != "recording" {
+		t.Errorf("expected dialog type 'recording', got '%s'", v.Dialog[0].Type)
 	}
 }

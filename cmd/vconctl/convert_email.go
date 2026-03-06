@@ -76,12 +76,13 @@ func runEmail(_ *cobra.Command, args []string) error {
 	}
 
 	v.Dialog = append(v.Dialog, vcon.Dialog{
-		Type:      "email",
-		StartTime: &v.CreatedAt,
-		Parties:   dialogParties,
-		Body:      env.Text,
-		MediaType: "text/plain",
-		MessageID: env.GetHeader("Message-Id"),
+		Type:        "text",
+		Application: "email",
+		StartTime:   &v.CreatedAt,
+		Parties:     dialogParties,
+		Body:        env.Text,
+		MediaType:   "text/plain",
+		MessageID:   env.GetHeader("Message-Id"),
 	})
 
 	return writeVconFile(v, vConOut, f)

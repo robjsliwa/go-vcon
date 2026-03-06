@@ -89,7 +89,7 @@ func TestValidComplexVCon(t *testing.T) {
 
 	// Add an attachment related to the initial call
 	attachmentIdx := v.AddAttachment(vcon.Attachment{
-		DialogIdx: initialCallIdx,
+		DialogIdx: vcon.IntPtr(initialCallIdx),
 		PartyIdx:  agentIdx,
 		StartTime: now,
 		MediaType: "application/pdf",
@@ -135,7 +135,7 @@ func TestValidComplexVCon(t *testing.T) {
 	ttVal, ok := v.Dialog[transferDialogIdx].TargetDialog.AsInt()
 	assert.True(t, ok)
 	assert.Equal(t, initialCallIdx, ttVal, "Transfer should reference initial call")
-	assert.Equal(t, initialCallIdx, v.Attachments[attachmentIdx].DialogIdx, "Attachment should reference initial call")
+	assert.Equal(t, initialCallIdx, *v.Attachments[attachmentIdx].DialogIdx, "Attachment should reference initial call")
 	assert.Equal(t, []int{initialCallIdx, followupDialogIdx}, v.Analysis[transcriptIdx].Dialog, "Transcript should reference both calls")
 
 	// Verify sentiment analysis properties
@@ -197,6 +197,7 @@ func TestInvalidDialogReference(t *testing.T) {
 
 	v.AddAnalysis(vcon.Analysis{
 		Type:   "transcript",
+		Vendor: "TestVendor",
 		Dialog: []int{dialogIdx, 10}, // 10 is an invalid dialog index
 	})
 
@@ -272,7 +273,7 @@ func TestComplexConferenceScenario(t *testing.T) {
 	endTime := startTime.Add(15 * time.Minute)
 
 	conferenceIdx := v.AddDialog(vcon.Dialog{
-		Type:       "conference",
+		Type:       "recording", // Schema restricts to: recording, text, transfer, incomplete
 		StartTime:  &startTime,
 		Duration:   (endTime.Sub(startTime)).Seconds(),
 		Parties:    []int{moderatorIdx, participant1Idx, participant2Idx, participant3Idx},
