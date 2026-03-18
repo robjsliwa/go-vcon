@@ -1,7 +1,7 @@
 # go-vcon
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/robjsliwa/go-vcon.svg)](https://pkg.go.dev/github.com/robjsliwa/go-vcon)
-[![Go Report Card](https://goreportcard.com/badge/github.com/robjsliwa/go-vcon)](https://goreportcard.com/report/github.com/robjsliwa/go-vcon)
+[![Go Report Card](https://goreportcard.com/badge/github.com/robjsliwa/go-vcon?cache_bust=1)](https://goreportcard.com/report/github.com/robjsliwa/go-vcon)
 
 A Go implementation of the **vCon (Virtual Conversation)** container specification, fully compliant with [draft-ietf-vcon-vcon-core-02](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (spec version `0.4.0`).
 
