@@ -6,7 +6,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-go@v5
       with:
         go-version: '1.24'
@@ -16,5 +16,11 @@ jobs:
         sudo apt-get install -y ffmpeg
     - name: Verify ffprobe installation
       run: ffprobe -version
+    - name: Run go vet
+      run: go vet ./...
     - name: Run tests with coverage
       run: go test -v -coverprofile=coverage.out ./...
+    - name: Refresh Go Report Card
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      continue-on-error: true
+      run: curl -sS -X POST -F 'repo=github.com/robjsliwa/go-vcon' https://goreportcard.com/checks
