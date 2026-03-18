@@ -498,6 +498,96 @@ func TestV003MigrationFromFile(t *testing.T) {
 	}
 }
 
+func TestV003MigrationFullRoundTrip(t *testing.T) {
+	// Load v0.0.3 fixture — triggers auto-migration
+	v, err := LoadFromFile("../../testdata/sample_vcons/comprehensive-vcon.json")
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+
+	// Version migrated
+	if v.Vcon != "0.4.0" {
+		t.Errorf("expected version 0.4.0, got %s", v.Vcon)
+	}
+
+	// All dialog encodings must be base64url, not base64
+	for i, d := range v.Dialog {
+		if d.Encoding == "base64" {
+			t.Errorf("dialog[%d] encoding should be base64url after migration, got base64", i)
+		}
+	}
+
+	// Analysis[0] must have Vendor set
+	if len(v.Analysis) < 1 {
+		t.Fatalf("expected at least 1 analysis, got %d", len(v.Analysis))
+	}
+	if v.Analysis[0].Vendor == "" {
+		t.Error("analysis[0] vendor should be set after migration")
+	} else if v.Analysis[0].Vendor != "AIAnalytics, Inc." && v.Analysis[0].Vendor != "unknown" {
+		t.Errorf("analysis[0] vendor should be original or 'unknown', got %s", v.Analysis[0].Vendor)
+	}
+
+	// Analysis[1] content_hash uses dash separator (ContentHashList)
+	if len(v.Analysis) >= 2 {
+		for _, ch := range v.Analysis[1].ContentHash {
+			if ch.Algorithm == "" {
+				t.Errorf("analysis[1] content_hash should have algorithm set, got %+v", ch)
+			}
+			if ch.Hash == "" {
+				t.Errorf("analysis[1] content_hash should have hash set, got %+v", ch)
+			}
+		}
+	}
+
+	// Attachments[0] should have DialogIdx set and encoding migrated
+	if len(v.Attachments) < 1 {
+		t.Fatalf("expected at least 1 attachment, got %d", len(v.Attachments))
+	}
+	if v.Attachments[0].DialogIdx == nil {
+		t.Error("attachments[0] dialog index should not be nil after migration")
+	} else if *v.Attachments[0].DialogIdx != 0 {
+		t.Errorf("expected attachments[0] dialog index 0, got %d", *v.Attachments[0].DialogIdx)
+	}
+	if v.Attachments[0].Encoding == "base64" {
+		t.Error("attachments[0] encoding should be base64url after migration")
+	}
+
+	// Must pass v0.4.0 schema validation
+	if err := v.Validate(); err != nil {
+		t.Fatalf("migrated vcon should validate against v0.4.0 schema: %v", err)
+	}
+
+	// Round-trip: marshal → BuildFromJSON → compare key fields
+	data, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	v2, err := BuildFromJSON(string(data))
+	if err != nil {
+		t.Fatalf("BuildFromJSON round-trip failed: %v", err)
+	}
+
+	if v2.UUID != v.UUID {
+		t.Errorf("UUID mismatch: %s vs %s", v.UUID, v2.UUID)
+	}
+	if v2.Subject != v.Subject {
+		t.Errorf("Subject mismatch: %s vs %s", v.Subject, v2.Subject)
+	}
+	if len(v2.Parties) != len(v.Parties) {
+		t.Errorf("party count mismatch: %d vs %d", len(v.Parties), len(v2.Parties))
+	}
+	if len(v2.Dialog) != len(v.Dialog) {
+		t.Errorf("dialog count mismatch: %d vs %d", len(v.Dialog), len(v2.Dialog))
+	}
+	if len(v2.Analysis) != len(v.Analysis) {
+		t.Errorf("analysis count mismatch: %d vs %d", len(v.Analysis), len(v2.Analysis))
+	}
+	if len(v2.Attachments) != len(v.Attachments) {
+		t.Errorf("attachment count mismatch: %d vs %d", len(v.Attachments), len(v2.Attachments))
+	}
+}
+
 func TestAnalysisVendorRequired(t *testing.T) {
 	// Analysis missing "vendor" should fail schema validation via BuildFromJSON
 	jsonStr := `{

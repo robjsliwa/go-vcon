@@ -233,6 +233,74 @@ func TestCompleteRoundTrip(t *testing.T) {
 	t.Log("✅ Complete round trip test successful: vcon->sign->encrypt->decrypt->verify->original vcon")
 }
 
+// TestCryptoWorkflowWithFormDetection tests the complete sign→encrypt→decrypt→verify
+// workflow and verifies form detection at each stage.
+func TestCryptoWorkflowWithFormDetection(t *testing.T) {
+	privateKey, certs, err := generateTestCertificate()
+	require.NoError(t, err)
+
+	rootPool := x509.NewCertPool()
+	rootPool.AddCert(certs[0])
+
+	// Create and validate a vCon
+	v := vcon.New("example.com")
+	v.Subject = "Form Detection Test"
+	v.AddParty(vcon.Party{Name: "Alice", Tel: "tel:+12025551234"})
+	now := time.Now().UTC()
+	v.AddDialog(vcon.Dialog{
+		Type:      "text",
+		StartTime: &now,
+		Parties:   []int{0},
+		Body:      "test message",
+		Encoding:  "none",
+	})
+	require.NoError(t, v.Validate())
+
+	// Unsigned form detection
+	unsignedData, err := json.Marshal(v)
+	require.NoError(t, err)
+	form, err := vcon.DetectForm(unsignedData)
+	require.NoError(t, err)
+	assert.Equal(t, vcon.VConFormUnsigned, form, "should detect unsigned form")
+
+	// Sign → detect signed form
+	signed, err := v.Sign(privateKey, certs)
+	require.NoError(t, err)
+	signedData, err := json.Marshal(signed.JSON)
+	require.NoError(t, err)
+	form, err = vcon.DetectForm(signedData)
+	require.NoError(t, err)
+	assert.Equal(t, vcon.VConFormSigned, form, "should detect signed form")
+
+	// Encrypt → detect encrypted form
+	recipient := jose.Recipient{
+		Algorithm: jose.RSA_OAEP,
+		Key:       &privateKey.PublicKey,
+	}
+	encrypted, err := signed.Encrypt([]jose.Recipient{recipient})
+	require.NoError(t, err)
+	encryptedData, err := json.Marshal(encrypted.JSON)
+	require.NoError(t, err)
+	form, err = vcon.DetectForm(encryptedData)
+	require.NoError(t, err)
+	assert.Equal(t, vcon.VConFormEncrypted, form, "should detect encrypted form")
+
+	// Decrypt → verify → compare with original
+	decrypted, err := encrypted.Decrypt(privateKey)
+	require.NoError(t, err)
+
+	signedAfterDecrypt := vcon.SignedVCon{JSON: decrypted}
+	final, err := signedAfterDecrypt.Verify(rootPool)
+	require.NoError(t, err)
+
+	assert.Equal(t, v.UUID, final.UUID)
+	assert.Equal(t, v.Subject, final.Subject)
+	assert.Equal(t, len(v.Parties), len(final.Parties))
+	assert.Equal(t, len(v.Dialog), len(final.Dialog))
+	assert.Equal(t, v.Parties[0].Name, final.Parties[0].Name)
+	assert.Equal(t, v.Dialog[0].Type, final.Dialog[0].Type)
+}
+
 // TestVerifyRoundTrip uses the test key fixtures for verification
 func TestVerifyRoundTrip(t *testing.T) {
 	leafKey, leafCert, rootPool := loadKeys(t) // helper parses PEM files

@@ -48,9 +48,14 @@ func DetectForm(data []byte) (VConForm, error) {
 		return VConFormEncrypted, nil
 	}
 
-	// JWS General JSON has "signatures" array
+	// JWS General JSON has "signatures" array; Flattened has "signature" + "protected"
 	if _, ok := m["signatures"]; ok {
 		return VConFormSigned, nil
+	}
+	if _, ok := m["signature"]; ok {
+		if _, hasPayload := m["payload"]; hasPayload {
+			return VConFormSigned, nil
+		}
 	}
 
 	// Unsigned vCon has "uuid" and/or "parties"

@@ -26,6 +26,29 @@ func TestDetectFormSigned(t *testing.T) {
 	}
 }
 
+func TestDetectFormSignedFlattened(t *testing.T) {
+	data := []byte(`{"payload":"eyJ0ZXN0IjoidmFsdWUifQ","protected":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9","signature":"abc123"}`)
+	form, err := DetectForm(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if form != VConFormSigned {
+		t.Errorf("expected signed, got %s", form)
+	}
+}
+
+func TestDetectFormSignaturWithoutPayloadIsNotSigned(t *testing.T) {
+	// "signature" without "payload" should not be detected as signed
+	data := []byte(`{"signature":"abc123","uuid":"test"}`)
+	form, err := DetectForm(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if form == VConFormSigned {
+		t.Errorf("should not detect as signed without payload field")
+	}
+}
+
 func TestDetectFormEncrypted(t *testing.T) {
 	data := []byte(`{"protected":"eyJ0eXAiOiJKV1QiLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIn0","ciphertext":"encrypted_data","iv":"test_iv","tag":"test_tag"}`)
 	form, err := DetectForm(data)
